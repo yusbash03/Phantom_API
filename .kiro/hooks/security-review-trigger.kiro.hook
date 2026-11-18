@@ -1,0 +1,24 @@
+{
+  "enabled": true,
+  "name": "Security review on sensitive changes",
+  "description": "When authentication, authorisation, upload, public endpoint, hub or startup code changes, review it against the security steering document.",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "src/PHANTOM.API/Program.cs",
+      "src/PHANTOM.API/Controllers/**/*.cs",
+      "src/PHANTOM.API/Hubs/**/*.cs",
+      "src/PHANTOM.API/Middleware/**/*.cs",
+      "src/PHANTOM.Application/Auth/**/*.cs",
+      "src/PHANTOM.Application/Reporting/**/*.cs",
+      "src/PHANTOM.Infrastructure/Identity/**/*.cs",
+      "src/PHANTOM.Infrastructure/Storage/**/*.cs",
+      "src/PHANTOM.Infrastructure/Ai/**/*.cs"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "A security-sensitive file changed. Review only the changed code against .kiro/steering/security.md. Check specifically: missing [Authorize]/policy or unintended [AllowAnonymous]; resource ownership checks (IDOR) for responder-scoped data; role changes or privilege escalation paths; secrets or PII in logs, prompts or responses; unvalidated input; file handling (content sniffing, size limits, storage keys, download headers); CORS or cookie settings; provider error text leaking to clients. Report each finding with file:line, severity (Critical/High/Medium/Low), and a concrete fix. If there are no findings, say so plainly. Do not modify code."
+  }
+}

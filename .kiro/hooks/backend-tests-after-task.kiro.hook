@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "name": "Backend tests after spec task",
+  "description": "After a spec task finishes, build the backend with warnings-as-errors and run unit tests. Integration tests are run separately because they need Docker.",
+  "version": "1",
+  "when": {
+    "type": "postTaskExecution"
+  },
+  "then": {
+    "type": "runCommand",
+    "command": "if [ -f PHANTOM.sln ]; then dotnet build PHANTOM.sln --nologo -v q && dotnet test --project tests/PHANTOM.UnitTests --no-build; else echo 'PHANTOM.sln not created yet (Phase 2 task 1)'; fi",
+    "timeout": 600
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "name": "Requirement traceability check",
+  "description": "After a spec task finishes, check that every acceptance criterion it references is covered by a test or a recorded manual verification before the task may be ticked.",
+  "version": "1",
+  "when": {
+    "type": "postTaskExecution"
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "A task from .kiro/specs/phantom-platform/tasks.md has just been executed. For that task: 1) Read its `_Requirements:` references and open each acceptance criterion in requirements.md. 2) For each criterion, cite the test (file and test name) that verifies it, or state 'NOT VERIFIED'. 3) If any criterion is NOT VERIFIED, the task must remain unticked: say so and list what is missing. 4) Confirm no test was skipped, disabled or weakened in this change (search the diff for Skip=, [Fact(Skip, .skip(, .only(). Report results as a table. Do not mark the task complete yourself."
+  }
+}

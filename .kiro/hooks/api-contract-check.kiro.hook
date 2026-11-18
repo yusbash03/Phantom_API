@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "name": "API contract check",
+  "description": "When controllers or DTOs change, regenerate the OpenAPI contract and identify the frontend changes it implies.",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "src/PHANTOM.API/Controllers/**/*.cs",
+      "src/PHANTOM.Application/**/*Dto.cs",
+      "src/PHANTOM.Application/**/*Request.cs",
+      "src/PHANTOM.Application/**/*Response.cs"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "An API-facing file changed. 1) Run `dotnet build src/PHANTOM.API --nologo` so contracts/openapi.json is regenerated. 2) Run `git diff --stat contracts/openapi.json` and summarise every added, removed or changed path, schema or property. 3) If anything changed, list the exact files in the Phantom_UI repository (../../frontend/Phantom_UI) that must change: run `npm run api:generate` there and name the TanStack Query hooks, Zod schemas and components that use the affected types. Do not edit the frontend unless the current task requires it. 4) Flag any breaking change (removed/renamed field, changed type, new required field) explicitly."
+  }
+}
