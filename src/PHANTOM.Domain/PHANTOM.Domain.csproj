@@ -1,0 +1,3 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- The Domain has no package references by design (architecture steering). -->
+</Project>

@@ -1,0 +1,25 @@
+# Build output
+bin/
+obj/
+artifacts/
+publish/
+*.user
+*.suo
+.vs/
+.idea/
+TestResults/
+coverage*/
+
+# Secrets — never commit. Use `dotnet user-secrets` locally and environment variables in deployment.
+.env
+.env.*
+!.env.example
+appsettings.*.local.json
+*.pfx
+*.pem
+
+# Local file storage for development uploads
+storage/
+
+# OS
+.DS_Store

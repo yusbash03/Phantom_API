@@ -1,0 +1,21 @@
+# Optional local PostgreSQL for offline development. The default development database is Neon
+# (configured via `dotnet user-secrets`). Integration tests use Testcontainers, not this file.
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: phantom
+      POSTGRES_USER: phantom
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    ports:
+      - "5432:5432"
+    volumes:
+      - phantom-pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U phantom -d phantom"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  phantom-pg:
