@@ -15,5 +15,8 @@ public static class AuditActions
 
     public const string ReportSubmitted = "report.submitted";
     public const string IncidentCreated = "incident.created";
+    public const string IncidentUpdated = "incident.updated";
+    public const string IncidentStatusChanged = "incident.status_changed";
+    public const string IncidentSeverityChanged = "incident.severity_changed";
     public const string AiAnalysisQueued = "ai_analysis.queued";
 }

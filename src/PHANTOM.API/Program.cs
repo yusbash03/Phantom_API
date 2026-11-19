@@ -126,6 +126,17 @@ builder.Services.AddOpenApi("v1", options =>
             BearerFormat = "JWT",
         };
         document.Security = [new OpenApiSecurityRequirement { [new OpenApiSecuritySchemeReference("Bearer", document)] = [] }];
+
+        // A nullable enum property (e.g. Severity?) makes the generator add null to the shared enum
+        // component. Nullability is already expressed per property (oneOf null/$ref), so keep enums pure.
+        foreach (var schema in document.Components.Schemas?.Values.OfType<OpenApiSchema>() ?? [])
+        {
+            if (schema.Enum is { Count: > 0 } values && values.Any(v => v is null))
+            {
+                schema.Enum = values.Where(v => v is not null).ToList();
+            }
+        }
+
         return Task.CompletedTask;
     });
 });

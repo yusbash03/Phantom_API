@@ -66,7 +66,7 @@ Do not start a Phase 3 feature while the previous one has unresolved critical fa
   - `.kiro/steering/frontend.md` already present
   - _Requirements: 18.1; architecture steering_
 - [ ] 12. Design system and app shell [UI]
-  - Done: theme tokens, Inter, Sidebar, TopNav, SeverityBadge (+tests), Loading/Error/Empty states, ConfirmDialog (+tests), PageHeader. **Remaining:** MetricCard (task 27), StatusBadge/DataTable/Filters (task 16), Timeline (task 26) — built with their first real consumer
+  - Done: theme tokens, Inter, Sidebar, TopNav, SeverityBadge (+tests), Loading/Error/Empty states, ConfirmDialog (+tests), PageHeader. **Remaining:** MetricCard (task 27), Timeline (task 26). StatusBadge, LocationBadge, Pagination and the list filters shipped with task 16; plain shadcn `Table` is used instead of a generic DataTable — built with their first real consumer
   - Theme tokens (navy/charcoal, orange accent, severity palette), Inter font, Sidebar, TopNav, MetricCard, SeverityBadge (icon + text), StatusBadge, DataTable, Filters, ConfirmDialog, Loading/Error/Empty states, Timeline
   - Component tests for SeverityBadge accessibility and ConfirmDialog
   - _Requirements: 18.3, 18.5, 18.6, 18.7_
@@ -84,7 +84,10 @@ Do not start a Phase 3 feature while the previous one has unresolved critical fa
   - Multipart endpoint, validation, idempotency, rate limit, magic-byte sniffing, SkiaSharp re-encode, `IObjectStorage` (local), reference generation, public status endpoint; public report form (mobile-first) with confirmation screen
   - Tests: invalid input persists nothing; idempotent replay; disallowed file rejected; anonymous cannot reach staff endpoints
   - _Requirements: 4.1–4.10_
-- [ ] 16. Incident list and detail [API + UI]
+- [x] 16. Incident list and detail [API + UI]
+  - Verified 2026-11-19: 47 unit + 67 integration (16 new) + 30 Vitest (9 new) + 12 Playwright (desktop + mobile, real API + Neon) tests passing
+  - The `assigned/unassigned` list filter (5.11) needs the assignments table, so it is delivered with task 24. Close-as-duplicate belongs to the task 20 correlation decisions.
+  - The attachment download endpoint (`GET /attachments/{id}/content`, staff, `Content-Disposition: attachment`, `nosniff`) is delivered here
   - Query endpoints with filters/pagination, edit, transition endpoints, severity, concurrency conflict handling; list and detail screens
   - _Requirements: 5.1–5.11, 18.1_
 - [ ] 17. AI intelligence service [API]
