@@ -399,7 +399,7 @@ public sealed class IncidentManagementTests(PhantomApiFactory factory)
     private sealed record Detail(
         Guid Id, string Number, string Title, string Description, string Category, string Status, string? ApprovedSeverity,
         UserRefDto? AssignedCoordinator, UserRefDto? VerifiedBy, DateTimeOffset? VerifiedAt, string? ResolutionSummary,
-        UserRefDto? ResolvedBy, DateTimeOffset? ResolvedAt, string? ClosureReason, DateTimeOffset? ClosedAt, uint Version,
+        UserRefDto? ResolvedBy, DateTimeOffset? ResolvedAt, string? ClosureReason, DateTimeOffset? ClosedAt, int Version,
         List<string> AvailableActions, List<ReportDto> Reports);
 
     private sealed record ListItem(Guid Id, string Number, int ReportCount, bool LocationIsVerified);

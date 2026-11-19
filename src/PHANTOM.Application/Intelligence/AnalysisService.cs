@@ -1,0 +1,217 @@
+using System.Diagnostics;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using PHANTOM.Application.Abstractions;
+using PHANTOM.Application.Audit;
+using PHANTOM.Application.Incidents;
+using PHANTOM.Domain.Audit;
+using PHANTOM.Domain.Common;
+using PHANTOM.Domain.Incidents;
+
+namespace PHANTOM.Application.Intelligence;
+
+public interface IAnalysisService
+{
+    /// <summary>Runs one claimed (Processing) analysis to completion. Called by the background worker.</summary>
+    Task ProcessAsync(Guid analysisId, CancellationToken cancellationToken);
+
+    Task<Result<IReadOnlyList<AnalysisResponse>>> ListAsync(Guid incidentId, CancellationToken cancellationToken);
+
+    /// <summary>Queues a new attempt after the latest one failed (Requirement 6.5).</summary>
+    Task<Result<AnalysisResponse>> RetryAsync(Guid incidentId, CancellationToken cancellationToken);
+}
+
+internal sealed class AnalysisService(
+    IPhantomDbContext db,
+    IIncidentIntelligenceService intelligence,
+    IAnalysisSignal signal,
+    IAuditWriter audit,
+    ICurrentUser currentUser,
+    IClock clock,
+    ILogger<AnalysisService> logger) : IAnalysisService
+{
+    private const int MaxConcurrencyRetries = 3;
+
+    public async Task ProcessAsync(Guid analysisId, CancellationToken cancellationToken)
+    {
+        var analysis = await db.IncidentAnalyses.FirstOrDefaultAsync(a => a.Id == analysisId, cancellationToken);
+        if (analysis is null || analysis.Status != AnalysisStatus.Processing)
+        {
+            logger.LogWarning("Analysis {AnalysisId} is not claimed for processing; skipping", analysisId);
+            return;
+        }
+
+        var report = await db.IncidentReports.AsNoTracking()
+            .Where(r => r.Id == analysis.ReportId)
+            .Select(r => new IntelligenceRequest(r.Title, r.Description, r.Category, r.LocationText, r.SubmittedAt))
+            .FirstOrDefaultAsync(cancellationToken);
+
+        var started = Stopwatch.GetTimestamp();
+        IntelligenceOutcome outcome;
+        if (report is null)
+        {
+            outcome = IntelligenceOutcome.Failure("none", "none", AnalysisFailureCode.ProviderError, "The input report could not be found.");
+        }
+        else
+        {
+            try
+            {
+                outcome = await intelligence.AnalyzeAsync(report, cancellationToken);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
+            {
+                // A provider adapter bug must not leave the attempt stuck; the report stays intact either way.
+                logger.LogError(ex, "Intelligence provider threw for analysis {AnalysisId}", analysisId);
+                outcome = IntelligenceOutcome.Failure("unknown", "unknown", AnalysisFailureCode.ProviderError, "The AI provider call failed unexpectedly.");
+            }
+        }
+
+        var latencyMs = (int)Stopwatch.GetElapsedTime(started).TotalMilliseconds;
+        var now = clock.UtcNow;
+        var parsed = outcome.IsSuccess ? IntelligenceResultParser.Parse(outcome.RawJson) : null;
+
+        if (parsed is { IsSuccess: true })
+        {
+            var result = parsed.Value;
+            analysis.Succeed(outcome.Provider, outcome.Model, IntelligenceResultParser.Serialize(result), result.Severity, result.Category, latencyMs, now);
+            audit.RecordSystem(AuditActions.AiAnalysisCompleted, nameof(IncidentAnalysis), analysis.Id.ToString(),
+                newValue: new
+                {
+                    incidentId = analysis.IncidentId,
+                    attempt = analysis.Attempt,
+                    recommendedSeverity = result.Severity.ToString(),
+                    recommendedCategory = result.Category.ToString(),
+                    provider = outcome.Provider,
+                    model = outcome.Model,
+                    simulated = outcome.Provider == IntelligenceProviders.Simulated,
+                    latencyMs,
+                });
+            await SaveWithRecommendationAsync(analysis.IncidentId, result, now, cancellationToken);
+            logger.LogInformation("Analysis {AnalysisId} for incident {IncidentId} succeeded in {LatencyMs} ms ({Provider}/{Model})",
+                analysis.Id, analysis.IncidentId, latencyMs, outcome.Provider, outcome.Model);
+            return;
+        }
+
+        var code = outcome.FailureCode ?? AnalysisFailureCode.InvalidOutput;
+        var message = outcome.FailureMessage ?? parsed?.Error?.Message ?? "The AI response was not usable.";
+        analysis.Fail(code, message, outcome.Provider, outcome.Model, latencyMs, now);
+        audit.RecordSystem(AuditActions.AiAnalysisFailed, nameof(IncidentAnalysis), analysis.Id.ToString(),
+            newValue: new { incidentId = analysis.IncidentId, attempt = analysis.Attempt, failureCode = code.ToString(), provider = outcome.Provider, model = outcome.Model, latencyMs });
+        await db.SaveChangesAsync(cancellationToken);
+        logger.LogWarning("Analysis {AnalysisId} for incident {IncidentId} failed: {FailureCode}", analysis.Id, analysis.IncidentId, code);
+    }
+
+    public async Task<Result<IReadOnlyList<AnalysisResponse>>> ListAsync(Guid incidentId, CancellationToken cancellationToken)
+    {
+        if (!await db.Incidents.AnyAsync(i => i.Id == incidentId, cancellationToken))
+        {
+            return Error.NotFound("incident.not_found", "Incident not found.");
+        }
+
+        var analyses = await db.IncidentAnalyses.AsNoTracking()
+            .Where(a => a.IncidentId == incidentId)
+            .OrderByDescending(a => a.Attempt).ThenByDescending(a => a.RequestedAt)
+            .ToListAsync(cancellationToken);
+        var reportIds = analyses.Select(a => a.ReportId).Distinct().ToList();
+        var references = await db.IncidentReports.AsNoTracking()
+            .Where(r => reportIds.Contains(r.Id))
+            .ToDictionaryAsync(r => r.Id, r => r.Reference, cancellationToken);
+        var requesterIds = analyses.Select(a => a.RequestedById).OfType<Guid>().Distinct().ToList();
+        var requesters = await db.Users.AsNoTracking()
+            .Where(u => requesterIds.Contains(u.Id))
+            .ToDictionaryAsync(u => u.Id, u => new UserRef(u.Id, u.DisplayName), cancellationToken);
+
+        return analyses.Select(a => ToResponse(a, references.GetValueOrDefault(a.ReportId, string.Empty),
+            a.RequestedById is { } id && requesters.TryGetValue(id, out var user) ? user : null)).ToList();
+    }
+
+    public async Task<Result<AnalysisResponse>> RetryAsync(Guid incidentId, CancellationToken cancellationToken)
+    {
+        if (currentUser.UserId is not { } userId)
+        {
+            return Error.Unauthorized("auth.required", "Authentication is required.");
+        }
+
+        if (!await db.Incidents.AnyAsync(i => i.Id == incidentId, cancellationToken))
+        {
+            return Error.NotFound("incident.not_found", "Incident not found.");
+        }
+
+        var latest = await db.IncidentAnalyses.AsNoTracking()
+            .Where(a => a.IncidentId == incidentId)
+            .OrderByDescending(a => a.RequestedAt)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (latest is null)
+        {
+            return Error.NotFound("analysis.not_found", "This incident has no analysis to retry.");
+        }
+
+        if (latest.Status != AnalysisStatus.Failed)
+        {
+            return Error.Conflict("analysis.not_failed", latest.IsFinished
+                ? "The latest analysis succeeded; only a failed analysis can be retried."
+                : "An analysis is already queued or running for this incident.");
+        }
+
+        var nextAttempt = await db.IncidentAnalyses.Where(a => a.ReportId == latest.ReportId).MaxAsync(a => a.Attempt, cancellationToken) + 1;
+        var retry = IncidentAnalysis.CreatePending(Guid.CreateVersion7(), incidentId, latest.ReportId, nextAttempt, clock.UtcNow, userId);
+        db.IncidentAnalyses.Add(retry);
+        audit.Record(AuditActions.AiAnalysisRetryRequested, nameof(IncidentAnalysis), retry.Id.ToString(),
+            previousValue: new { analysisId = latest.Id, attempt = latest.Attempt, failureCode = latest.FailureCode?.ToString() },
+            newValue: new { incidentId, attempt = nextAttempt });
+
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            // Unique (report_id, attempt): someone else queued the retry first.
+            return Error.Conflict("analysis.retry_in_progress", "A retry was already requested for this incident.");
+        }
+
+        signal.Notify();
+        var reference = await db.IncidentReports.Where(r => r.Id == retry.ReportId).Select(r => r.Reference).FirstAsync(cancellationToken);
+        var requester = await db.Users.Where(u => u.Id == userId).Select(u => new UserRef(u.Id, u.DisplayName)).FirstOrDefaultAsync(cancellationToken);
+        return ToResponse(retry, reference, requester);
+    }
+
+    /// <summary>
+    /// Writes the AI recommendation through the domain method, which cannot touch approved values.
+    /// A coordinator may save the incident meanwhile; then the incident is reloaded and only the AI
+    /// fields are re-applied, so no human change is ever overwritten.
+    /// </summary>
+    private async Task SaveWithRecommendationAsync(Guid incidentId, IntelligenceResultV1 result, DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        for (var attempt = 1; ; attempt++)
+        {
+            var incident = await db.Incidents.FirstOrDefaultAsync(i => i.Id == incidentId, cancellationToken);
+            incident?.RecordAiRecommendation(result.Severity, result.Category, now);
+            try
+            {
+                await db.SaveChangesAsync(cancellationToken);
+                return;
+            }
+            catch (DbUpdateConcurrencyException ex) when (attempt < MaxConcurrencyRetries)
+            {
+                foreach (var entry in ex.Entries)
+                {
+                    await entry.ReloadAsync(cancellationToken);
+                }
+            }
+        }
+    }
+
+    private static AnalysisResponse ToResponse(IncidentAnalysis a, string reportReference, UserRef? requestedBy)
+    {
+        IntelligenceResultV1? result = null;
+        if (a.Result is not null)
+        {
+            var parsed = IntelligenceResultParser.Parse(a.Result);
+            result = parsed.IsSuccess ? parsed.Value : null;
+        }
+
+        return new AnalysisResponse(a.Id, a.Attempt, reportReference, a.Status, a.Provider, a.Model, a.Provider == IntelligenceProviders.Simulated, a.SchemaVersion,
+            a.RequestedAt, a.CompletedAt, a.LatencyMs, a.RecommendedSeverity, a.RecommendedCategory, result, a.FailureCode, a.FailureMessage, requestedBy);
+    }
+}

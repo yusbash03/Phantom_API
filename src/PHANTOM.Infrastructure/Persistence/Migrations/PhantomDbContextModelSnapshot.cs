@@ -455,11 +455,10 @@ namespace PHANTOM.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("verified_by_id");
 
-                    b.Property<uint>("Version")
+                    b.Property<int>("Version")
                         .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
 
                     b.HasKey("Id")
                         .HasName("pk_incidents");
@@ -493,6 +492,10 @@ namespace PHANTOM.Infrastructure.Persistence.Migrations
                     b.Property<int>("Attempt")
                         .HasColumnType("integer")
                         .HasColumnName("attempt");
+
+                    b.Property<DateTimeOffset?>("ClaimedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("claimed_at");
 
                     b.Property<DateTimeOffset?>("CompletedAt")
                         .HasColumnType("timestamp with time zone")

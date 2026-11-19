@@ -44,7 +44,12 @@ public sealed class Incident
     public bool IsDemoData { get; private set; }
     public DateTimeOffset CreatedAt { get; private set; }
     public DateTimeOffset UpdatedAt { get; private set; }
-    public uint Version { get; private set; }
+    /// <summary>
+    /// Optimistic-concurrency version, incremented by human decisions only (transitions, edits, severity).
+    /// System writes such as AI recommendations do not change it, so they never make a coordinator's
+    /// next action fail as a conflict (Requirement 5.10 concerns conflicting human updates).
+    /// </summary>
+    public int Version { get; private set; }
 
     public static Result<Incident> Create(
         Guid id,
@@ -218,7 +223,7 @@ public sealed class Incident
         }
 
         ApprovedSeverity = severity;
-        UpdatedAt = now;
+        Touch(now);
         return Result.Success();
     }
 
@@ -238,7 +243,7 @@ public sealed class Incident
         Title = title.Trim();
         Description = description.Trim();
         Category = category;
-        UpdatedAt = now;
+        Touch(now);
         return Result.Success();
     }
 
@@ -250,6 +255,7 @@ public sealed class Incident
         UpdatedAt = now;
     }
 
+    /// <summary>System-driven location update (e.g. geocoding); does not change <see cref="Version"/>.</summary>
     public void UpdateLocation(Location location, DateTimeOffset now)
     {
         Location = location ?? throw new ArgumentNullException(nameof(location));
@@ -271,8 +277,15 @@ public sealed class Incident
         }
 
         Status = rule!.To;
-        UpdatedAt = now;
+        Touch(now);
         return Result.Success();
+    }
+
+    /// <summary>Marks a human-driven change: new timestamp and a new concurrency version.</summary>
+    private void Touch(DateTimeOffset now)
+    {
+        UpdatedAt = now;
+        Version++;
     }
 
     private Error Invalid(IncidentTransition transition) =>

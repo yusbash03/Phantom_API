@@ -9,7 +9,7 @@ Do not start a Phase 3 feature while the previous one has unresolved critical fa
 - [x] 0.1 Inspect workspace, both repositories, toolchain (.NET 10.0.400, Node 26.7.0, Docker 29.7.2, Kiro 1.4.215)
 - [x] 0.2 Draft requirements.md, design.md, tasks.md and steering documents
 - [x] 0.3 Approval of design decisions D1–D6 (design.md §16) — approved 2026-11-18; D3 = Render
-- [ ] 0.4 Prerequisites: ~~start Docker Desktop~~ (done); ~~database~~ (Neon PostgreSQL provided); **obtain Gemini API key; obtain Mapbox account (secret + URL-restricted public token)** — pending, needed before tasks 17 and 21
+- [ ] 0.4 Prerequisites: ~~start Docker Desktop~~ (done); ~~database~~ (Neon PostgreSQL provided); ~~obtain Gemini API key~~ (configured in user-secrets 2026-11-19); **Mapbox account (secret + URL-restricted public token)** — `Mapbox:AccessToken` is present in user-secrets, but whether it is the secret or the URL-restricted public token still needs confirming before task 21
 
 ## Phase 2 — Foundation
 
@@ -90,11 +90,14 @@ Do not start a Phase 3 feature while the previous one has unresolved critical fa
   - The attachment download endpoint (`GET /attachments/{id}/content`, staff, `Content-Disposition: attachment`, `nosniff`) is delivered here
   - Query endpoints with filters/pagination, edit, transition endpoints, severity, concurrency conflict handling; list and detail screens
   - _Requirements: 5.1–5.11, 18.1_
-- [ ] 17. AI intelligence service [API]
+- [-] 17. AI intelligence service [API]
+  - Implemented and tested 2026-11-19: 83 unit (incl. Gemini adapter contract tests against the recorded response shape) + 76 integration tests passing, stable over 3 runs. The worker, retry endpoint, `Simulated*` dev provider and the human-only incident `version` (AI writes no longer cause false 409s) are all in place.
+  - **Live verification PENDING.** On 2026-11-19 the key listed models fine, but `generateContent` was unreliable. `gemini-2.5-flash` is retired for new users (JSON 404). The `gemini-3.x` flash models gave an empty-body 404 over HTTP/2, one HTTP/1.1 call gave 503 "high demand", and the live test (`--filter-trait "Category=Live"`, `PHANTOM_LIVE_AI_KEY`) timed out at 30 s twice. Re-run the live test before ticking this task.
   - `IIncidentIntelligenceService`, `GeminiIntelligenceService` (REST, structured output), `AnalysisWorker` with SKIP LOCKED claim and stuck-job recovery, retry endpoint
   - **Verify against the live Gemini API** and record the result; until then report as pending
   - _Requirements: 6.1–6.9_
-- [ ] 18. AI output validation [API]
+- [x] 18. AI output validation [API]
+  - Verified 2026-11-19: `IntelligenceResultParser`/`IntelligenceResultValidator` with a strict enum converter (rejects numbers and flag combinations such as "High, Low"). Unit tests cover malformed JSON, invalid enums, missing/unknown fields and oversize strings/lists. Integration tests cover timeout, invalid output and adapter exceptions (each leaves the analysis Failed with the report intact) and AI results arriving after verification. The approved-severity property test is `AiRecommendationIsolationTests`.
   - `IntelligenceResultValidator`; tests for malformed JSON, invalid enums, oversize strings, provider timeout → Failed with report intact; property test: analysis never changes approved severity
   - _Requirements: 6.3, 6.4, 6.7_
 - [ ] 19. Intelligence panel [UI]

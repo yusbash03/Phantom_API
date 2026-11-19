@@ -56,9 +56,11 @@ public sealed class IncidentIntakeTests(PhantomApiFactory factory)
         Assert.False(incident.Location.HasCoordinates);
         Assert.True(incident.LocationNeedsVerification);
 
+        // Created with the report (6.1); the background worker may already have picked it up.
         var analysis = await db.IncidentAnalyses.AsNoTracking().SingleAsync(a => a.ReportId == report.Id, Ct);
-        Assert.Equal(AnalysisStatus.Pending, analysis.Status);
         Assert.Equal(1, analysis.Attempt);
+        Assert.Null(analysis.RequestedById);
+        Assert.True(analysis.RequestedAt <= report.SubmittedAt);
         Assert.Equal(incident.Id, analysis.IncidentId);
 
         var audit = await db.AuditLogs.AsNoTracking()

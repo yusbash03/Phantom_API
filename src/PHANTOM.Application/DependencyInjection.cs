@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using PHANTOM.Application.Audit;
 using PHANTOM.Application.Auth;
 using PHANTOM.Application.Incidents;
+using PHANTOM.Application.Intelligence;
 using PHANTOM.Application.Reporting.Intake;
 using PHANTOM.Application.Users;
 
@@ -24,6 +25,7 @@ public static class DependencyInjection
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IReportIntakeService, ReportIntakeService>();
         services.AddScoped<IIncidentService, IncidentService>();
+        services.AddScoped<IAnalysisService, AnalysisService>();
         return services;
     }
 }

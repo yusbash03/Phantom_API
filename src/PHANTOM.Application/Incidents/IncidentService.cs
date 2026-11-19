@@ -302,7 +302,7 @@ internal sealed class IncidentService(
     private Task<Result<IncidentDetailResponse>> TransitionAsync<TRequest>(
         Guid id,
         TRequest request,
-        uint version,
+        int version,
         IncidentTransition transition,
         object? details,
         Func<Incident, Guid, DateTimeOffset, Result> apply,
@@ -325,7 +325,7 @@ internal sealed class IncidentService(
     private async Task<Result<IncidentDetailResponse>> MutateAsync<TRequest>(
         Guid id,
         TRequest request,
-        uint version,
+        int version,
         Func<Incident, Guid, DateTimeOffset, Result> apply,
         CancellationToken cancellationToken)
     {

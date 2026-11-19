@@ -19,4 +19,7 @@ public static class AuditActions
     public const string IncidentStatusChanged = "incident.status_changed";
     public const string IncidentSeverityChanged = "incident.severity_changed";
     public const string AiAnalysisQueued = "ai_analysis.queued";
+    public const string AiAnalysisCompleted = "ai_analysis.completed";
+    public const string AiAnalysisFailed = "ai_analysis.failed";
+    public const string AiAnalysisRetryRequested = "ai_analysis.retry_requested";
 }

@@ -45,7 +45,7 @@ builder.Host.UseSerilog((context, configuration) =>
 
 // ---- Application & infrastructure ----------------------------------------------------------
 builder.Services.AddApplication(builder.Configuration);
-builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddInfrastructure(builder.Configuration, builder.Environment);
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
 

@@ -112,22 +112,22 @@ public sealed record IncidentDetailResponse(
     bool IsDemoData,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
-    uint Version,
+    int Version,
     IReadOnlyList<IncidentAction> AvailableActions,
     IReadOnlyList<IncidentReportResponse> Reports);
 
 /// <summary>Every write carries the <c>Version</c> the client last read; a stale version is a conflict.</summary>
-public sealed record VersionedRequest(uint Version);
+public sealed record VersionedRequest(int Version);
 
-public sealed record EditIncidentRequest(string Title, string Description, IncidentCategory? Category, uint Version);
+public sealed record EditIncidentRequest(string Title, string Description, IncidentCategory? Category, int Version);
 
 /// <summary>An omitted severity is a validation error, never a silent default.</summary>
-public sealed record VerifyIncidentRequest(Severity? ApprovedSeverity, uint Version);
+public sealed record VerifyIncidentRequest(Severity? ApprovedSeverity, int Version);
 
-public sealed record ReasonRequest(string Reason, uint Version);
+public sealed record ReasonRequest(string Reason, int Version);
 
-public sealed record ResolveIncidentRequest(string ResolutionSummary, uint Version);
+public sealed record ResolveIncidentRequest(string ResolutionSummary, int Version);
 
-public sealed record ChangeSeverityRequest(Severity? Severity, uint Version);
+public sealed record ChangeSeverityRequest(Severity? Severity, int Version);
 
 public sealed record AttachmentContent(Stream Content, string ContentType, string FileName);

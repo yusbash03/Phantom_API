@@ -16,7 +16,7 @@ internal sealed class IncidentConfiguration : IEntityTypeConfiguration<Incident>
         builder.Property(i => i.Description).HasMaxLength(Incident.MaxDescriptionLength).IsRequired();
         builder.Property(i => i.ResolutionSummary).HasMaxLength(Incident.MaxDescriptionLength);
         builder.Property(i => i.ClosureReason).HasMaxLength(Incident.MaxReasonLength);
-        builder.Property(i => i.Version).IsRowVersion();
+        builder.Property(i => i.Version).IsConcurrencyToken();
 
         // Owned Location value object (stored in-row, no separate table)
         builder.OwnsOne(i => i.Location, loc =>
@@ -91,9 +91,9 @@ internal sealed class IncidentAnalysisConfiguration : IEntityTypeConfiguration<I
         builder.Property(a => a.SchemaVersion).HasMaxLength(IncidentAnalysis.MaxSchemaVersionLength).IsRequired();
         builder.Property(a => a.Provider).HasMaxLength(IncidentAnalysis.MaxProviderLength);
         builder.Property(a => a.Model).HasMaxLength(IncidentAnalysis.MaxModelLength);
-        builder.Property(a => a.FailureCode).HasMaxLength(IncidentAnalysis.MaxFailureCodeLength);
         builder.Property(a => a.FailureMessage).HasMaxLength(IncidentAnalysis.MaxFailureMessageLength);
         builder.Property(a => a.Result).HasColumnType("jsonb");
+        builder.Property(a => a.FailureCode).HasMaxLength(IncidentAnalysis.MaxFailureCodeLength);
 
         // Worker queue index
         builder.HasIndex(a => new { a.Status, a.RequestedAt });

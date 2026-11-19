@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using PHANTOM.Application.Abstractions;
 using PHANTOM.Application.Audit;
 using PHANTOM.Application.Common;
+using PHANTOM.Application.Intelligence;
 using PHANTOM.Domain.Audit;
 using PHANTOM.Domain.Common;
 using PHANTOM.Domain.Incidents;
@@ -20,6 +21,7 @@ public sealed class ReportIntakeService(
     IObjectStorage objectStorage,
     IIncidentNumberGenerator numberGenerator,
     IAuditWriter audit,
+    IAnalysisSignal analysisSignal,
     IClock clock,
     ILogger<ReportIntakeService> logger) : IReportIntakeService
 {
@@ -143,6 +145,7 @@ public sealed class ReportIntakeService(
             }
 
             storedKeys.Clear();
+            analysisSignal.Notify();
             logger.LogInformation("Report {Reference} submitted: incident {IncidentId}, analysis {AnalysisId}, {AttachmentCount} attachments",
                 reference, incident.Id, analysis.Id, processedFiles.Count);
             return new SubmitReportResponse(reference, now);

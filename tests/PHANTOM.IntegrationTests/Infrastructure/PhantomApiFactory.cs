@@ -1,10 +1,13 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using PHANTOM.Application.Abstractions;
+using PHANTOM.Application.Intelligence;
 using PHANTOM.Domain.Identity;
 using PHANTOM.Infrastructure.Persistence;
 using Testcontainers.PostgreSql;
@@ -21,6 +24,8 @@ public sealed class PhantomApiFactory : WebApplicationFactory<Program>, IAsyncLi
     public string ConnectionString => _postgres.GetConnectionString();
 
     /// <summary>Isolated object-storage directory so tests can assert exactly which files were written.</summary>
+    public ScriptedIntelligenceService Intelligence { get; } = new();
+
     public string StoragePath { get; } = Path.Combine(Path.GetTempPath(), $"phantom-it-{Guid.NewGuid():N}");
 
     public async ValueTask InitializeAsync()
@@ -51,7 +56,13 @@ public sealed class PhantomApiFactory : WebApplicationFactory<Program>, IAsyncLi
             ["RateLimiting:LoginPermitsPerMinute"] = "10000",
             ["RateLimiting:PublicPermitsPerMinute"] = "10000",
             ["Storage:Local:BasePath"] = StoragePath,
+            ["Ai:PollIntervalSeconds"] = "1",
         }));
+        builder.ConfigureTestServices(services =>
+        {
+            services.RemoveAll<IIncidentIntelligenceService>();
+            services.AddSingleton<IIncidentIntelligenceService>(Intelligence);
+        });
     }
 
     /// <summary>Creates an active user with the given roles directly in the database.</summary>

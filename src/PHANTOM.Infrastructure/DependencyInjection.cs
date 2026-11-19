@@ -1,12 +1,17 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using PHANTOM.Application.Abstractions;
+using PHANTOM.Application.Intelligence;
 using PHANTOM.Infrastructure.Common;
 using PHANTOM.Infrastructure.Identity;
+using PHANTOM.Infrastructure.Intelligence;
 using PHANTOM.Infrastructure.Persistence;
 using PHANTOM.Infrastructure.Seeding;
 using PHANTOM.Infrastructure.Storage;
+using PHANTOM.Infrastructure.Workers;
 
 namespace PHANTOM.Infrastructure;
 
@@ -14,7 +19,7 @@ public static class DependencyInjection
 {
     public const string ConnectionStringName = "Phantom";
 
-    public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration, IHostEnvironment environment)
     {
         // Resolved lazily so tooling (e.g. build-time OpenAPI export) can build the host without a database.
         services.AddDbContext<PhantomDbContext>(options =>
@@ -47,6 +52,7 @@ public static class DependencyInjection
         services.AddScoped<IObjectStorage, LocalFileObjectStorage>();
         services.AddScoped<IIncidentNumberGenerator, PostgresIncidentNumberGenerator>();
         services.AddScoped<DemoDataSeeder>();
+        AddIntelligence(services, configuration, environment);
 
         services.AddHealthChecks().AddDbContextCheck<PhantomDbContext>("database", tags: ["ready"]);
         return services;
@@ -58,4 +64,43 @@ public static class DependencyInjection
                 .MigrationsHistoryTable("__ef_migrations_history")
                 .EnableRetryOnFailure(3))
             .UseSnakeCaseNamingConvention();
+
+    private static void AddIntelligence(IServiceCollection services, IConfiguration configuration, IHostEnvironment environment)
+    {
+        services.AddOptions<AiOptions>()
+            .Bind(configuration.GetSection(AiOptions.SectionName))
+            .Validate(o => o.Provider == AiOptions.GeminiProvider, $"Ai:Provider must be '{AiOptions.GeminiProvider}'.")
+            .Validate(o => !string.IsNullOrWhiteSpace(o.Model), "Ai:Model is required.")
+            .Validate(o => o.TimeoutSeconds is >= 1 and <= 120, "Ai:TimeoutSeconds must be 1-120.")
+            .Validate(o => o.MaxRetries is >= 0 and <= 5, "Ai:MaxRetries must be 0-5.")
+            .Validate(o => o.PollIntervalSeconds is >= 1 and <= 300, "Ai:PollIntervalSeconds must be 1-300.")
+            .Validate(o => o.StuckAfterMinutes is >= 1 and <= 60, "Ai:StuckAfterMinutes must be 1-60.")
+            .ValidateOnStart();
+
+        var ai = configuration.GetSection(AiOptions.SectionName).Get<AiOptions>() ?? new AiOptions();
+        if (ai.HasApiKey)
+        {
+            services.AddHttpClient<IIncidentIntelligenceService, GeminiIntelligenceService>((sp, http) =>
+            {
+                http.BaseAddress = sp.GetRequiredService<IOptions<AiOptions>>().Value.BaseUrl;
+                http.Timeout = Timeout.InfiniteTimeSpan; // per-attempt timeout is enforced by the service
+            });
+        }
+        else if (environment.IsDevelopment())
+        {
+            // Development convenience only; output is labelled "Simulated" everywhere.
+            services.AddSingleton<IIncidentIntelligenceService, SimulatedIntelligenceService>();
+        }
+        else
+        {
+            services.AddSingleton<IIncidentIntelligenceService, UnconfiguredIntelligenceService>();
+        }
+
+        services.AddSingleton<AnalysisSignal>();
+        services.AddSingleton<IAnalysisSignal>(sp => sp.GetRequiredService<AnalysisSignal>());
+        if (ai.WorkerEnabled)
+        {
+            services.AddHostedService<AnalysisWorker>();
+        }
+    }
 }
