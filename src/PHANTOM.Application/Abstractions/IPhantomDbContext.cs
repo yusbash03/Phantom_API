@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using PHANTOM.Domain.Audit;
 using PHANTOM.Domain.Identity;
+using PHANTOM.Domain.Incidents;
 
 namespace PHANTOM.Application.Abstractions;
 
@@ -11,6 +12,10 @@ public interface IPhantomDbContext
     DbSet<Role> Roles { get; }
     DbSet<RefreshToken> RefreshTokens { get; }
     DbSet<AuditLog> AuditLogs { get; }
+    DbSet<Incident> Incidents { get; }
+    DbSet<IncidentReport> IncidentReports { get; }
+    DbSet<Attachment> Attachments { get; }
+    DbSet<IncidentAnalysis> IncidentAnalyses { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

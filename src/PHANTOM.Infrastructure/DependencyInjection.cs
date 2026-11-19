@@ -6,6 +6,7 @@ using PHANTOM.Infrastructure.Common;
 using PHANTOM.Infrastructure.Identity;
 using PHANTOM.Infrastructure.Persistence;
 using PHANTOM.Infrastructure.Seeding;
+using PHANTOM.Infrastructure.Storage;
 
 namespace PHANTOM.Infrastructure;
 
@@ -35,11 +36,16 @@ public static class DependencyInjection
             .Validate(o => System.Text.Encoding.UTF8.GetByteCount(o.SigningKey) >= 32, "Jwt:SigningKey must be at least 32 bytes.")
             .ValidateOnStart();
         services.AddOptions<SeedOptions>().Bind(configuration.GetSection(SeedOptions.SectionName));
+        services.AddOptions<LocalStorageOptions>().Bind(configuration.GetSection(LocalStorageOptions.SectionName));
 
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton<IClock, SystemClock>();
         services.AddSingleton<IPasswordHasher, PasswordHasherAdapter>();
         services.AddSingleton<ITokenService, JwtTokenService>();
+        services.AddSingleton<IFileInspector, MagicByteFileInspector>();
+        services.AddSingleton<IImageProcessor, SkiaSharpImageProcessor>();
+        services.AddScoped<IObjectStorage, LocalFileObjectStorage>();
+        services.AddScoped<IIncidentNumberGenerator, PostgresIncidentNumberGenerator>();
         services.AddScoped<DemoDataSeeder>();
 
         services.AddHealthChecks().AddDbContextCheck<PhantomDbContext>("database", tags: ["ready"]);

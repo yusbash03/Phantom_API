@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using PHANTOM.Application.Audit;
 using PHANTOM.Application.Auth;
+using PHANTOM.Application.Reporting.Intake;
 using PHANTOM.Application.Users;
 
 namespace PHANTOM.Application;
@@ -20,6 +21,7 @@ public static class DependencyInjection
         services.AddScoped<IAuditWriter, AuditWriter>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IUserService, UserService>();
+        services.AddScoped<IReportIntakeService, ReportIntakeService>();
         return services;
     }
 }

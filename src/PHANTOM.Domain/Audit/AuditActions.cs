@@ -12,4 +12,8 @@ public static class AuditActions
     public const string UserRolesChanged = "user.roles_changed";
     public const string UserDeactivated = "user.deactivated";
     public const string UserActivated = "user.activated";
+
+    public const string ReportSubmitted = "report.submitted";
+    public const string IncidentCreated = "incident.created";
+    public const string AiAnalysisQueued = "ai_analysis.queued";
 }

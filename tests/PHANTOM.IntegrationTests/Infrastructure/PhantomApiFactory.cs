@@ -20,6 +20,9 @@ public sealed class PhantomApiFactory : WebApplicationFactory<Program>, IAsyncLi
 
     public string ConnectionString => _postgres.GetConnectionString();
 
+    /// <summary>Isolated object-storage directory so tests can assert exactly which files were written.</summary>
+    public string StoragePath { get; } = Path.Combine(Path.GetTempPath(), $"phantom-it-{Guid.NewGuid():N}");
+
     public async ValueTask InitializeAsync()
     {
         await _postgres.StartAsync();
@@ -30,6 +33,10 @@ public sealed class PhantomApiFactory : WebApplicationFactory<Program>, IAsyncLi
     {
         await base.DisposeAsync();
         await _postgres.DisposeAsync();
+        if (Directory.Exists(StoragePath))
+        {
+            Directory.Delete(StoragePath, recursive: true);
+        }
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -43,6 +50,7 @@ public sealed class PhantomApiFactory : WebApplicationFactory<Program>, IAsyncLi
             ["Seed:Enabled"] = "false",
             ["RateLimiting:LoginPermitsPerMinute"] = "10000",
             ["RateLimiting:PublicPermitsPerMinute"] = "10000",
+            ["Storage:Local:BasePath"] = StoragePath,
         }));
     }
 

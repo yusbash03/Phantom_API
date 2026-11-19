@@ -131,6 +131,161 @@
         }
       }
     },
+    "/api/v1/public/reports": {
+      "post": {
+        "tags": [
+          "PublicReports"
+        ],
+        "summary": "Submits a public incident report and returns its reference.",
+        "description": "Send an `Idempotency-Key` (UUID) header; repeating it within 24 hours returns the original\nreference instead of creating a second report.",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Up to 5 images (JPEG, PNG, WebP) and 1 audio recording (WebM, OGG, MP3, WAV, M4A), 10 MB each.",
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "Title": {
+                    "type": "string"
+                  },
+                  "Description": {
+                    "type": "string"
+                  },
+                  "Category": {
+                    "$ref": "#/components/schemas/IncidentCategory"
+                  },
+                  "LocationText": {
+                    "type": "string"
+                  },
+                  "Latitude": {
+                    "type": "number",
+                    "format": "double"
+                  },
+                  "Longitude": {
+                    "type": "number",
+                    "format": "double"
+                  },
+                  "ReporterName": {
+                    "type": "string"
+                  },
+                  "ReporterPhone": {
+                    "type": "string"
+                  },
+                  "ReporterEmail": {
+                    "type": "string"
+                  },
+                  "Files": {
+                    "$ref": "#/components/schemas/IFormFileCollection"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubmitReportResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/reports/{reference}/status": {
+      "get": {
+        "tags": [
+          "PublicReports"
+        ],
+        "summary": "Returns the coarse public status of a submitted report.",
+        "parameters": [
+          {
+            "name": "reference",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicStatusResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/users": {
       "get": {
         "tags": [
@@ -512,6 +667,27 @@
           }
         }
       },
+      "IFormFile": {
+        "type": "string",
+        "format": "binary"
+      },
+      "IFormFileCollection": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/IFormFile"
+        }
+      },
+      "IncidentCategory": {
+        "enum": [
+          "Fire",
+          "MedicalEmergency",
+          "RoadAccident",
+          "Security",
+          "Flood",
+          "Infrastructure",
+          "Other"
+        ]
+      },
       "LoginRequest": {
         "required": [
           "email",
@@ -611,6 +787,48 @@
             ]
           }
         }
+      },
+      "PublicReportStatus": {
+        "enum": [
+          "Received",
+          "UnderReview",
+          "BeingHandled",
+          "Closed"
+        ],
+        "description": "The only states a public reporter can see (Requirement 4.10)."
+      },
+      "PublicStatusResponse": {
+        "required": [
+          "reference",
+          "status"
+        ],
+        "type": "object",
+        "properties": {
+          "reference": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/PublicReportStatus"
+          }
+        },
+        "description": "Coarse status returned to anonymous callers — no internal data."
+      },
+      "SubmitReportResponse": {
+        "required": [
+          "reference",
+          "submittedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "reference": {
+            "type": "string"
+          },
+          "submittedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "description": "Returned to the public caller on successful submission."
       },
       "UpdateUserRolesRequest": {
         "required": [
@@ -736,6 +954,9 @@
   "tags": [
     {
       "name": "Auth"
+    },
+    {
+      "name": "PublicReports"
     },
     {
       "name": "Users"

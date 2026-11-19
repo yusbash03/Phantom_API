@@ -277,6 +277,420 @@ namespace PHANTOM.Infrastructure.Persistence.Migrations
                     b.ToTable("user_roles", (string)null);
                 });
 
+            modelBuilder.Entity("PHANTOM.Domain.Incidents.Attachment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("content_type");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("kind");
+
+                    b.Property<string>("OriginalFileName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("original_file_name");
+
+                    b.Property<Guid>("ReportId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("report_id");
+
+                    b.Property<string>("Sha256")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("sha256");
+
+                    b.Property<long>("SizeBytes")
+                        .HasColumnType("bigint")
+                        .HasColumnName("size_bytes");
+
+                    b.Property<string>("StorageKey")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("storage_key");
+
+                    b.Property<DateTimeOffset?>("TranscribedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("transcribed_at");
+
+                    b.Property<string>("TranscriptProvider")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("transcript_provider");
+
+                    b.Property<string>("TranscriptText")
+                        .HasMaxLength(10000)
+                        .HasColumnType("character varying(10000)")
+                        .HasColumnName("transcript_text");
+
+                    b.HasKey("Id")
+                        .HasName("pk_attachments");
+
+                    b.HasIndex("ReportId")
+                        .HasDatabaseName("ix_attachments_report_id");
+
+                    b.HasIndex("StorageKey")
+                        .IsUnique()
+                        .HasDatabaseName("ix_attachments_storage_key");
+
+                    b.ToTable("attachments", (string)null);
+                });
+
+            modelBuilder.Entity("PHANTOM.Domain.Incidents.Incident", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("AiRecommendedCategory")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("ai_recommended_category");
+
+                    b.Property<string>("AiRecommendedSeverity")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("ai_recommended_severity");
+
+                    b.Property<string>("ApprovedSeverity")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("approved_severity");
+
+                    b.Property<Guid?>("AssignedCoordinatorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("assigned_coordinator_id");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("category");
+
+                    b.Property<DateTimeOffset?>("ClosedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("closed_at");
+
+                    b.Property<string>("ClosureReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("closure_reason");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(5000)
+                        .HasColumnType("character varying(5000)")
+                        .HasColumnName("description");
+
+                    b.Property<bool>("IsDemoData")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_demo_data");
+
+                    b.Property<bool>("LocationNeedsVerification")
+                        .HasColumnType("boolean")
+                        .HasColumnName("location_needs_verification");
+
+                    b.Property<string>("Number")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("number");
+
+                    b.Property<string>("ResolutionSummary")
+                        .HasMaxLength(5000)
+                        .HasColumnType("character varying(5000)")
+                        .HasColumnName("resolution_summary");
+
+                    b.Property<DateTimeOffset?>("ResolvedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("resolved_at");
+
+                    b.Property<Guid?>("ResolvedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("resolved_by_id");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("status");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("title");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<DateTimeOffset?>("VerifiedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("verified_at");
+
+                    b.Property<Guid?>("VerifiedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("verified_by_id");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_incidents");
+
+                    b.HasIndex("ApprovedSeverity")
+                        .HasDatabaseName("ix_incidents_approved_severity");
+
+                    b.HasIndex("Category")
+                        .HasDatabaseName("ix_incidents_category");
+
+                    b.HasIndex("CreatedAt")
+                        .HasDatabaseName("ix_incidents_created_at");
+
+                    b.HasIndex("Number")
+                        .IsUnique()
+                        .HasDatabaseName("ix_incidents_number");
+
+                    b.HasIndex("Status", "CreatedAt")
+                        .HasDatabaseName("ix_incidents_status_created_at");
+
+                    b.ToTable("incidents", (string)null);
+                });
+
+            modelBuilder.Entity("PHANTOM.Domain.Incidents.IncidentAnalysis", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("Attempt")
+                        .HasColumnType("integer")
+                        .HasColumnName("attempt");
+
+                    b.Property<DateTimeOffset?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("completed_at");
+
+                    b.Property<string>("FailureCode")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("failure_code");
+
+                    b.Property<string>("FailureMessage")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("failure_message");
+
+                    b.Property<Guid>("IncidentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("incident_id");
+
+                    b.Property<int?>("LatencyMs")
+                        .HasColumnType("integer")
+                        .HasColumnName("latency_ms");
+
+                    b.Property<string>("Model")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("model");
+
+                    b.Property<string>("Provider")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("provider");
+
+                    b.Property<string>("RecommendedCategory")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("recommended_category");
+
+                    b.Property<string>("RecommendedSeverity")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("recommended_severity");
+
+                    b.Property<Guid>("ReportId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("report_id");
+
+                    b.Property<DateTimeOffset>("RequestedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("requested_at");
+
+                    b.Property<Guid?>("RequestedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("requested_by_id");
+
+                    b.Property<string>("Result")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("result");
+
+                    b.Property<string>("SchemaVersion")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("schema_version");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("status");
+
+                    b.Property<bool>("UsedAudioTranscript")
+                        .HasColumnType("boolean")
+                        .HasColumnName("used_audio_transcript");
+
+                    b.Property<bool>("UsedImageInput")
+                        .HasColumnType("boolean")
+                        .HasColumnName("used_image_input");
+
+                    b.HasKey("Id")
+                        .HasName("pk_incident_analyses");
+
+                    b.HasIndex("IncidentId")
+                        .HasDatabaseName("ix_incident_analyses_incident_id");
+
+                    b.HasIndex("ReportId", "Attempt")
+                        .IsUnique()
+                        .HasDatabaseName("ix_incident_analyses_report_id_attempt");
+
+                    b.HasIndex("Status", "RequestedAt")
+                        .HasDatabaseName("ix_incident_analyses_status_requested_at");
+
+                    b.ToTable("incident_analyses", (string)null);
+                });
+
+            modelBuilder.Entity("PHANTOM.Domain.Incidents.IncidentReport", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("category");
+
+                    b.Property<string>("ClientIpHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("client_ip_hash");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(5000)
+                        .HasColumnType("character varying(5000)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("IdempotencyKey")
+                        .HasColumnType("text")
+                        .HasColumnName("idempotency_key");
+
+                    b.Property<Guid>("IncidentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("incident_id");
+
+                    b.Property<bool>("IsDemoData")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_demo_data");
+
+                    b.Property<string>("LocationText")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("location_text");
+
+                    b.Property<Guid>("OriginalIncidentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("original_incident_id");
+
+                    b.Property<string>("Reference")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("reference");
+
+                    b.Property<decimal?>("ReportedLatitude")
+                        .HasColumnType("numeric(9,6)")
+                        .HasColumnName("reported_latitude");
+
+                    b.Property<decimal?>("ReportedLongitude")
+                        .HasColumnType("numeric(9,6)")
+                        .HasColumnName("reported_longitude");
+
+                    b.Property<string>("ReporterEmail")
+                        .HasMaxLength(320)
+                        .HasColumnType("character varying(320)")
+                        .HasColumnName("reporter_email");
+
+                    b.Property<string>("ReporterName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("reporter_name");
+
+                    b.Property<string>("ReporterPhone")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("reporter_phone");
+
+                    b.Property<DateTimeOffset>("SubmittedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("submitted_at");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("title");
+
+                    b.HasKey("Id")
+                        .HasName("pk_incident_reports");
+
+                    b.HasIndex("IdempotencyKey")
+                        .IsUnique()
+                        .HasDatabaseName("ix_incident_reports_idempotency_key")
+                        .HasFilter("idempotency_key IS NOT NULL");
+
+                    b.HasIndex("IncidentId")
+                        .HasDatabaseName("ix_incident_reports_incident_id");
+
+                    b.HasIndex("Reference")
+                        .IsUnique()
+                        .HasDatabaseName("ix_incident_reports_reference");
+
+                    b.ToTable("incident_reports", (string)null);
+                });
+
             modelBuilder.Entity("PHANTOM.Domain.Identity.RefreshToken", b =>
                 {
                     b.HasOne("PHANTOM.Domain.Identity.User", null)
@@ -304,6 +718,98 @@ namespace PHANTOM.Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_user_roles_users_user_id");
 
                     b.Navigation("Role");
+                });
+
+            modelBuilder.Entity("PHANTOM.Domain.Incidents.Attachment", b =>
+                {
+                    b.HasOne("PHANTOM.Domain.Incidents.IncidentReport", null)
+                        .WithMany()
+                        .HasForeignKey("ReportId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_attachments_incident_reports_report_id");
+                });
+
+            modelBuilder.Entity("PHANTOM.Domain.Incidents.Incident", b =>
+                {
+                    b.OwnsOne("PHANTOM.Domain.Incidents.Location", "Location", b1 =>
+                        {
+                            b1.Property<Guid>("IncidentId")
+                                .HasColumnType("uuid")
+                                .HasColumnName("id");
+
+                            b1.Property<decimal?>("Latitude")
+                                .HasColumnType("numeric(9,6)")
+                                .HasColumnName("location_latitude");
+
+                            b1.Property<decimal?>("Longitude")
+                                .HasColumnType("numeric(9,6)")
+                                .HasColumnName("location_longitude");
+
+                            b1.Property<string>("Precision")
+                                .IsRequired()
+                                .HasMaxLength(40)
+                                .HasColumnType("character varying(40)")
+                                .HasColumnName("location_precision");
+
+                            b1.Property<string>("Provenance")
+                                .IsRequired()
+                                .HasMaxLength(40)
+                                .HasColumnType("character varying(40)")
+                                .HasColumnName("location_provenance");
+
+                            b1.Property<string>("Text")
+                                .IsRequired()
+                                .HasMaxLength(500)
+                                .HasColumnType("character varying(500)")
+                                .HasColumnName("location_text");
+
+                            b1.Property<DateTimeOffset?>("VerifiedAt")
+                                .HasColumnType("timestamp with time zone")
+                                .HasColumnName("location_verified_at");
+
+                            b1.Property<Guid?>("VerifiedById")
+                                .HasColumnType("uuid")
+                                .HasColumnName("location_verified_by_id");
+
+                            b1.HasKey("IncidentId");
+
+                            b1.ToTable("incidents");
+
+                            b1.WithOwner()
+                                .HasForeignKey("IncidentId")
+                                .HasConstraintName("fk_incidents_incidents_id");
+                        });
+
+                    b.Navigation("Location")
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("PHANTOM.Domain.Incidents.IncidentAnalysis", b =>
+                {
+                    b.HasOne("PHANTOM.Domain.Incidents.Incident", null)
+                        .WithMany()
+                        .HasForeignKey("IncidentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_incident_analyses_incidents_incident_id");
+
+                    b.HasOne("PHANTOM.Domain.Incidents.IncidentReport", null)
+                        .WithMany()
+                        .HasForeignKey("ReportId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_incident_analyses_incident_reports_report_id");
+                });
+
+            modelBuilder.Entity("PHANTOM.Domain.Incidents.IncidentReport", b =>
+                {
+                    b.HasOne("PHANTOM.Domain.Incidents.Incident", null)
+                        .WithMany()
+                        .HasForeignKey("IncidentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_incident_reports_incidents_incident_id");
                 });
 
             modelBuilder.Entity("PHANTOM.Domain.Identity.User", b =>

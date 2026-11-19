@@ -78,7 +78,9 @@ Do not start a Phase 3 feature while the previous one has unresolved critical fa
 
 ## Phase 3 — Core functionality (P0 first, in order)
 
-- [ ] 15. Incident intake [API + UI]
+- [x] 15. Incident intake [API + UI]
+  - Verified 2026-11-19: 47 unit + 51 integration (22 intake) + 21 Vitest tests passing; manual check through the Vite proxy against Neon — submit (201, `PH-2026-000001`), idempotent replay (same reference/timestamp), coarse status, disguised file rejected (400, `errors.files`), stored JPEG re-encoded with no EXIF
+  - AI analysis rows are created `Pending` and stay queued until the worker lands in task 17. The SkiaSharp Linux native assets are referenced for the Render image. The client-IP hash salt is a code constant, to be revisited in task 35.
   - Multipart endpoint, validation, idempotency, rate limit, magic-byte sniffing, SkiaSharp re-encode, `IObjectStorage` (local), reference generation, public status endpoint; public report form (mobile-first) with confirmation screen
   - Tests: invalid input persists nothing; idempotent replay; disallowed file rejected; anonymous cannot reach staff endpoints
   - _Requirements: 4.1–4.10_

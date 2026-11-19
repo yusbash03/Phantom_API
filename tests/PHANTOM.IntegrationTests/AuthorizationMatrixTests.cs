@@ -18,6 +18,8 @@ public sealed class AuthorizationMatrixTests(PhantomApiFactory factory)
         "POST api/v1/auth/login",
         "POST api/v1/auth/refresh",
         "POST api/v1/auth/logout",
+        "POST api/v1/public/reports",
+        "GET api/v1/public/reports/{reference}/status",
         "GET /health/live",
         "GET /health/ready",
     ];
