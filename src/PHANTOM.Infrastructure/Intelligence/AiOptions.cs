@@ -14,7 +14,9 @@ public sealed class AiOptions
     public string Model { get; set; } = "gemini-3.8-flash";
 
     public Uri BaseUrl { get; set; } = new("https://generativelanguage.googleapis.com/v1beta/");
-    public int TimeoutSeconds { get; set; } = 30;
+
+    /// <summary>Observed gemini-3.8-flash latency on 2026-11-20 was 13-30+ s for one report, so 30 s (design §5) was too tight.</summary>
+    public int TimeoutSeconds { get; set; } = 60;
     public int MaxRetries { get; set; } = 2;
     public double Temperature { get; set; } = 0.2;
     public int MaxOutputTokens { get; set; } = 8192;

@@ -165,7 +165,15 @@ if (exposeApiDocs)
     });
 }
 
-app.UseSerilogRequestLogging();
+app.UseSerilogRequestLogging(options =>
+{
+    // A request the client abandoned (navigation, superseded query) is not a server error. Serilog would
+    // otherwise log it as ERR 500 before the exception handler turns it into 499.
+    options.GetLevel = (context, _, exception) =>
+        context.RequestAborted.IsCancellationRequested ? Serilog.Events.LogEventLevel.Information
+        : exception is not null || context.Response.StatusCode >= 500 ? Serilog.Events.LogEventLevel.Error
+        : Serilog.Events.LogEventLevel.Information;
+});
 app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();

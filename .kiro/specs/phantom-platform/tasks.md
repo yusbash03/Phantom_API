@@ -90,9 +90,9 @@ Do not start a Phase 3 feature while the previous one has unresolved critical fa
   - The attachment download endpoint (`GET /attachments/{id}/content`, staff, `Content-Disposition: attachment`, `nosniff`) is delivered here
   - Query endpoints with filters/pagination, edit, transition endpoints, severity, concurrency conflict handling; list and detail screens
   - _Requirements: 5.1–5.11, 18.1_
-- [-] 17. AI intelligence service [API]
+- [x] 17. AI intelligence service [API]
   - Implemented and tested 2026-11-19: 83 unit (incl. Gemini adapter contract tests against the recorded response shape) + 76 integration tests passing, stable over 3 runs. The worker, retry endpoint, `Simulated*` dev provider and the human-only incident `version` (AI writes no longer cause false 409s) are all in place.
-  - **Live verification PENDING.** On 2026-11-19 the key listed models fine, but `generateContent` was unreliable. `gemini-2.5-flash` is retired for new users (JSON 404). The `gemini-3.x` flash models gave an empty-body 404 over HTTP/2, one HTTP/1.1 call gave 503 "high demand", and the live test (`--filter-trait "Category=Live"`, `PHANTOM_LIVE_AI_KEY`) timed out at 30 s twice. Re-run the live test before ticking this task.
+  - **Live verification PASSED 2026-11-20:** the opt-in live test returned a valid `phantom.intel.v1` result from `gemini-3.8-flash` (fire with people trapped → Critical, trapped = Reported, accurate summary). The running app also completed real analyses. On 2026-11-19 the provider had returned transient 404/503 responses. Real latency was 13-30+ s, so the per-attempt timeout default was raised from the design's 30 s to 60 s (`Ai:TimeoutSeconds`).
   - `IIncidentIntelligenceService`, `GeminiIntelligenceService` (REST, structured output), `AnalysisWorker` with SKIP LOCKED claim and stuck-job recovery, retry endpoint
   - **Verify against the live Gemini API** and record the result; until then report as pending
   - _Requirements: 6.1–6.9_
@@ -100,7 +100,10 @@ Do not start a Phase 3 feature while the previous one has unresolved critical fa
   - Verified 2026-11-19: `IntelligenceResultParser`/`IntelligenceResultValidator` with a strict enum converter (rejects numbers and flag combinations such as "High, Low"). Unit tests cover malformed JSON, invalid enums, missing/unknown fields and oversize strings/lists. Integration tests cover timeout, invalid output and adapter exceptions (each leaves the analysis Failed with the report intact) and AI results arriving after verification. The approved-severity property test is `AiRecommendationIsolationTests`.
   - `IntelligenceResultValidator`; tests for malformed JSON, invalid enums, oversize strings, provider timeout → Failed with report intact; property test: analysis never changes approved severity
   - _Requirements: 6.3, 6.4, 6.7_
-- [ ] 19. Intelligence panel [UI]
+- [x] 19. Intelligence panel [UI]
+  - Verified 2026-11-20: 37 Vitest tests (7 new) cover advisory labelling, the AI vs approved comparison table, plain-text rendering of hostile model output, the Simulated badge, failure with retry, keeping the last success visible, and polling until a result arrives (which then refreshes the incident). 14 Playwright tests pass (desktop + mobile, real API + Neon), including one asserting an honest panel state for a new report.
+  - Playwright now runs with one worker: parallel browsers starved the local machine of CPU (password hashing went from ~1 s to 10+ s). The suite also has a global warm-up step.
+  - About 100 analyses from earlier e2e/manual reports are still Pending in the Neon dev database. They will be processed through Gemini the next time the API runs with the worker enabled.
   - AI recommendation panel (clearly labelled), failure state with retry, side-by-side AI vs approved values
   - _Requirements: 6.12, 15.4_
 - [ ] 20. Incident correlation [API + UI]
