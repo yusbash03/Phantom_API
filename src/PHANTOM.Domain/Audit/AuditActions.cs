@@ -26,6 +26,12 @@ public static class AuditActions
     public const string AiAnalysisFailed = "ai_analysis.failed";
     public const string AiAnalysisRetryRequested = "ai_analysis.retry_requested";
 
+    public const string ResponderCreated = "responder.created";
+    public const string ResponderUpdated = "responder.updated";
+    public const string ResponderDeactivated = "responder.deactivated";
+    public const string ResponderActivated = "responder.activated";
+    public const string ResponderAvailabilityChanged = "responder.availability_changed";
+
     public const string RelationSuggested = "relation.suggested";
     public const string RelationLinked = "relation.linked";
     public const string RelationDecided = "relation.decided";

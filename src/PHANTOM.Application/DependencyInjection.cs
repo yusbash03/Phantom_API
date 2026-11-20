@@ -8,6 +8,7 @@ using PHANTOM.Application.Geocoding;
 using PHANTOM.Application.Incidents;
 using PHANTOM.Application.Intelligence;
 using PHANTOM.Application.Reporting.Intake;
+using PHANTOM.Application.Responders;
 using PHANTOM.Application.Users;
 
 namespace PHANTOM.Application;
@@ -35,6 +36,7 @@ public static class DependencyInjection
         services.AddScoped<IAnalysisService, AnalysisService>();
         services.AddScoped<ICorrelationService, CorrelationService>();
         services.AddScoped<IGeocodingProcessor, GeocodingProcessor>();
+        services.AddScoped<IResponderService, ResponderService>();
         return services;
     }
 }

@@ -54,8 +54,8 @@ Do not start a Phase 3 feature while the previous one has unresolved critical fa
 - [x] 9. User management [API]
   - Admin CRUD for users/roles, last-admin protection, audit
   - _Requirements: 3.1–3.4, 2.5, 2.6_
-- [ ] 10. Development seeding [API]
-  - Demo users per role and the environment guard are done and tested; **demo responders arrive with task 23**
+- [x] 10. Development seeding [API]
+  - Demo users per role and the environment guard were done and tested earlier. Demo responders (5, labelled "(demo)", `IsDemoData`, MED-01 linked to the demo Responder account) were added with task 23 and verified 2026-11-20 by an integration test, including idempotency.
   - Demo users per role, responders; `is_demo_data = true`; environment guard
   - Test: seeding is a no-op in Production without the explicit flag
   - _Requirements: 20.1, 20.2_
@@ -128,7 +128,10 @@ Do not start a Phase 3 feature while the previous one has unresolved critical fa
   - Known limitation: markers at (near-)identical coordinates overlap. The side list handles selection; marker clustering is a possible later improvement. Restrict `VITE_MAPBOX_PUBLIC_TOKEN` to the app's URLs in the Mapbox dashboard before deployment (task 37).
   - Mapbox GL map, category/severity/status filters, verified vs unverified styling, provenance popup, select → detail
   - _Requirements: 8.7, 8.8, 12.3_
-- [ ] 23. Responder management [API + UI]
+- [x] 23. Responder management [API + UI]
+  - Verified 2026-11-20: 134 unit tests (14 new) and 102 integration tests (8 new: role matrix, validation, case-insensitive unique call signs, account-linking rules, stale versions, audit before/after, all list filters plus facets, deactivate/reactivate, self-service availability, demo seeding). 59 Vitest (7 new) and 26 Playwright tests (6 new) pass.
+  - Admins create, edit, deactivate and reactivate responders and set their availability. Coordinators read only. A responder sets their own Available/Unavailable on the Account page. "Assigned" can never be set by hand (10.4).
+  - **Hand-off to task 24:** `ResponderService.HasActiveAssignmentAsync` returns false until assignments exist. Task 24 must replace it with a real query and set Assigned or release availability from assignment events.
   - _Requirements: 10.1–10.4_
 - [ ] 24. Assignment workflow [API + UI]
   - Assign/cancel (coordinator), acknowledge/decline/status/updates/complete (assignee only), system-driven incident transitions, "My assignments" screen

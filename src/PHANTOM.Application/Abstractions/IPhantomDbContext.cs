@@ -3,6 +3,7 @@ using PHANTOM.Domain.Audit;
 using PHANTOM.Domain.Correlation;
 using PHANTOM.Domain.Identity;
 using PHANTOM.Domain.Incidents;
+using PHANTOM.Domain.Responders;
 
 namespace PHANTOM.Application.Abstractions;
 
@@ -18,6 +19,7 @@ public interface IPhantomDbContext
     DbSet<Attachment> Attachments { get; }
     DbSet<IncidentAnalysis> IncidentAnalyses { get; }
     DbSet<IncidentRelation> IncidentRelations { get; }
+    DbSet<Responder> Responders { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

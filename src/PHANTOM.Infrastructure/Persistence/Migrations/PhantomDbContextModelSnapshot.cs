@@ -781,6 +781,103 @@ namespace PHANTOM.Infrastructure.Persistence.Migrations
                     b.ToTable("incident_reports", (string)null);
                 });
 
+            modelBuilder.Entity("PHANTOM.Domain.Responders.Responder", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Availability")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("availability");
+
+                    b.Property<string>("CallSign")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("call_sign");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(320)
+                        .HasColumnType("character varying(320)")
+                        .HasColumnName("email");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("full_name");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<bool>("IsDemoData")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_demo_data");
+
+                    b.Property<DateTimeOffset>("LastStatusAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_status_at");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("phone");
+
+                    b.PrimitiveCollection<string[]>("Skills")
+                        .IsRequired()
+                        .HasColumnType("text[]")
+                        .HasColumnName("skills");
+
+                    b.Property<string>("Team")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("team");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_responders");
+
+                    b.HasIndex("CallSign")
+                        .IsUnique()
+                        .HasDatabaseName("ix_responders_call_sign");
+
+                    b.HasIndex("Skills")
+                        .HasDatabaseName("ix_responders_skills");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("Skills"), "gin");
+
+                    b.HasIndex("Team")
+                        .HasDatabaseName("ix_responders_team");
+
+                    b.HasIndex("UserId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_responders_user_id")
+                        .HasFilter("user_id IS NOT NULL");
+
+                    b.HasIndex("IsActive", "Availability")
+                        .HasDatabaseName("ix_responders_is_active_availability");
+
+                    b.ToTable("responders", (string)null);
+                });
+
             modelBuilder.Entity("PHANTOM.Domain.Correlation.IncidentRelation", b =>
                 {
                     b.HasOne("PHANTOM.Domain.Incidents.Incident", null)
@@ -928,6 +1025,15 @@ namespace PHANTOM.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_incident_reports_incidents_incident_id");
+                });
+
+            modelBuilder.Entity("PHANTOM.Domain.Responders.Responder", b =>
+                {
+                    b.HasOne("PHANTOM.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_responders_users_user_id");
                 });
 
             modelBuilder.Entity("PHANTOM.Domain.Identity.User", b =>
