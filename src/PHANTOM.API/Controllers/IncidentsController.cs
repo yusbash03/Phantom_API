@@ -22,6 +22,13 @@ public sealed class IncidentsController(IIncidentService incidents) : Controller
     public async Task<ActionResult<PagedResult<IncidentListItem>>> List([FromQuery] IncidentListQuery query, CancellationToken cancellationToken) =>
         this.ToActionResult(await incidents.ListAsync(query, cancellationToken));
 
+    /// <summary>Incidents with coordinates for the operations map, plus a count of those that cannot be plotted.</summary>
+    [HttpGet("map")]
+    [ProducesResponseType<IncidentMapResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<IncidentMapResponse>> Map([FromQuery] IncidentMapQuery query, CancellationToken cancellationToken) =>
+        this.ToActionResult(await incidents.MapAsync(query, cancellationToken));
+
     [HttpGet("{id:guid}")]
     [ProducesResponseType<IncidentDetailResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]

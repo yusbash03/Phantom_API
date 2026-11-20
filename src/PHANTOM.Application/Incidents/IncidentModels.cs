@@ -138,3 +138,40 @@ public sealed record AttachmentContent(Stream Content, string ContentType, strin
 
 /// <summary>A coordinator confirms or corrects the location; the result is the only verified kind (Requirement 8.5).</summary>
 public sealed record VerifyLocationRequest(string Text, decimal? Latitude, decimal? Longitude, int Version);
+
+/// <summary>Map filters (Requirement 8.7). The bounding box is optional; give all four bounds or none.</summary>
+public sealed record IncidentMapQuery(
+    IReadOnlyList<IncidentStatus>? Status = null,
+    IncidentCategory? Category = null,
+    Severity? Severity = null,
+    decimal? MinLatitude = null,
+    decimal? MinLongitude = null,
+    decimal? MaxLatitude = null,
+    decimal? MaxLongitude = null);
+
+/// <summary>One plotted incident. Unverified locations are labelled as such wherever they appear (8.8).</summary>
+public sealed record MapIncident(
+    Guid Id,
+    string Number,
+    string Title,
+    IncidentCategory Category,
+    IncidentStatus Status,
+    Severity? ApprovedSeverity,
+    Severity? AiRecommendedSeverity,
+    decimal Latitude,
+    decimal Longitude,
+    LocationProvenance Provenance,
+    LocationPrecision Precision,
+    bool IsVerified,
+    string LocationText,
+    string? GeocoderPlaceName,
+    DateTimeOffset CreatedAt);
+
+/// <summary>
+/// <c>WithoutCoordinates</c> counts matching incidents that cannot be plotted, so the map never implies
+/// it shows everything. <c>Truncated</c> is true when more than <see cref="MaxItems"/> matched.
+/// </summary>
+public sealed record IncidentMapResponse(IReadOnlyList<MapIncident> Items, int WithoutCoordinates, bool Truncated)
+{
+    public const int MaxItems = 1000;
+}

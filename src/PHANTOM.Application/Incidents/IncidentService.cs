@@ -18,6 +18,7 @@ public interface IIncidentService
 {
     Task<Result<PagedResult<IncidentListItem>>> ListAsync(IncidentListQuery query, CancellationToken cancellationToken);
     Task<Result<IncidentDetailResponse>> GetAsync(Guid id, CancellationToken cancellationToken);
+    Task<Result<IncidentMapResponse>> MapAsync(IncidentMapQuery query, CancellationToken cancellationToken);
     Task<Result<IncidentDetailResponse>> EditAsync(Guid id, EditIncidentRequest request, CancellationToken cancellationToken);
     Task<Result<IncidentDetailResponse>> BeginReviewAsync(Guid id, VersionedRequest request, CancellationToken cancellationToken);
     Task<Result<IncidentDetailResponse>> VerifyAsync(Guid id, VerifyIncidentRequest request, CancellationToken cancellationToken);
@@ -156,6 +157,53 @@ internal sealed class IncidentService(
             .ToListAsync(cancellationToken);
 
         return new PagedResult<IncidentListItem>(items, page.SafePage, page.SafePageSize, total);
+    }
+
+    public async Task<Result<IncidentMapResponse>> MapAsync(IncidentMapQuery query, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+        var validation = await Validate(query, cancellationToken);
+        if (validation is not null)
+        {
+            return validation;
+        }
+
+        var incidents = db.Incidents.AsNoTracking();
+        if (query.Status is { Count: > 0 })
+        {
+            var statuses = query.Status.Distinct().ToList();
+            incidents = incidents.Where(i => statuses.Contains(i.Status));
+        }
+
+        if (query.Category.HasValue)
+        {
+            incidents = incidents.Where(i => i.Category == query.Category.Value);
+        }
+
+        if (query.Severity.HasValue)
+        {
+            incidents = incidents.Where(i => i.ApprovedSeverity == query.Severity.Value);
+        }
+
+        var withoutCoordinates = await incidents.CountAsync(i => i.Location.Latitude == null || i.Location.Longitude == null, cancellationToken);
+        var plotted = incidents.Where(i => i.Location.Latitude != null && i.Location.Longitude != null);
+        if (query.MinLatitude is { } minLat && query.MaxLatitude is { } maxLat && query.MinLongitude is { } minLon && query.MaxLongitude is { } maxLon)
+        {
+            plotted = plotted.Where(i => i.Location.Latitude >= minLat && i.Location.Latitude <= maxLat
+                && i.Location.Longitude >= minLon && i.Location.Longitude <= maxLon);
+        }
+
+        var rows = await plotted
+            .OrderByDescending(i => i.CreatedAt).ThenBy(i => i.Id)
+            .Take(IncidentMapResponse.MaxItems + 1)
+            .Select(i => new MapIncident(
+                i.Id, i.Number, i.Title, i.Category, i.Status, i.ApprovedSeverity, i.AiRecommendedSeverity,
+                i.Location.Latitude!.Value, i.Location.Longitude!.Value, i.Location.Provenance, i.Location.Precision,
+                i.Location.Provenance == LocationProvenance.ManuallyVerified, i.Location.Text, i.Location.GeocoderPlaceName, i.CreatedAt))
+            .ToListAsync(cancellationToken);
+
+        var truncated = rows.Count > IncidentMapResponse.MaxItems;
+        return new IncidentMapResponse(truncated ? rows[..IncidentMapResponse.MaxItems] : rows, withoutCoordinates, truncated);
     }
 
     public async Task<Result<IncidentDetailResponse>> GetAsync(Guid id, CancellationToken cancellationToken)

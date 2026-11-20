@@ -121,7 +121,11 @@ Do not start a Phase 3 feature while the previous one has unresolved critical fa
   - `MapboxGeocodingService`; worker step; failure → needs-verification flag; location verification endpoint; test that only manual verification sets `isVerified`
   - **Verify against live Mapbox** and record the result
   - _Requirements: 8.1–8.6_
-- [ ] 22. Operations map [UI]
+- [x] 22. Operations map [UI]
+  - Verified 2026-11-20: 94 integration tests (3 new, for `GET /incidents/map`), 52 Vitest (7 new) and 20 Playwright tests (desktop + mobile) pass. Playwright exercises the real Mapbox map in Chromium (canvas rendered, a new report's marker found by its spoken label, details card with provenance, navigation to the incident).
+  - Added the backend `GET /incidents/map` (staff), which returns a typed list rather than the design's GeoJSON. It also returns a count of matching incidents without coordinates, so the map never implies it shows everything.
+  - Markers are accessible HTML buttons with full spoken labels. Unverified locations use a dashed ring and an "Unverified" tag; colour comes from approved severity only. There is a side list as a keyboard alternative. Mapbox GL (`mapbox-gl` pinned 3.34.2) is lazy-loaded. A bug where Mapbox set `role="img"` on the button markers was found and fixed.
+  - Known limitation: markers at (near-)identical coordinates overlap. The side list handles selection; marker clustering is a possible later improvement. Restrict `VITE_MAPBOX_PUBLIC_TOKEN` to the app's URLs in the Mapbox dashboard before deployment (task 37).
   - Mapbox GL map, category/severity/status filters, verified vs unverified styling, provenance popup, select → detail
   - _Requirements: 8.7, 8.8, 12.3_
 - [ ] 23. Responder management [API + UI]

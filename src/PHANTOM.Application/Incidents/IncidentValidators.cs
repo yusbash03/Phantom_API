@@ -64,3 +64,21 @@ internal sealed class VerifyLocationRequestValidator : AbstractValidator<VerifyL
         RuleFor(r => r.Longitude).NotNull().WithMessage("Longitude is required.").InclusiveBetween(-180m, 180m).WithMessage("Longitude must be between -180 and 180.");
     }
 }
+
+internal sealed class IncidentMapQueryValidator : AbstractValidator<IncidentMapQuery>
+{
+    public IncidentMapQueryValidator()
+    {
+        RuleFor(q => q).Must(q =>
+                new[] { q.MinLatitude, q.MinLongitude, q.MaxLatitude, q.MaxLongitude }.All(v => v.HasValue)
+                || new[] { q.MinLatitude, q.MinLongitude, q.MaxLatitude, q.MaxLongitude }.All(v => !v.HasValue))
+            .WithName("bbox").WithMessage("Give all four bounding-box values or none.");
+        RuleFor(q => q.MinLatitude).InclusiveBetween(-90m, 90m);
+        RuleFor(q => q.MaxLatitude).InclusiveBetween(-90m, 90m).GreaterThanOrEqualTo(q => q.MinLatitude).When(q => q.MinLatitude.HasValue);
+        RuleFor(q => q.MinLongitude).InclusiveBetween(-180m, 180m);
+        RuleFor(q => q.MaxLongitude).InclusiveBetween(-180m, 180m).GreaterThanOrEqualTo(q => q.MinLongitude).When(q => q.MinLongitude.HasValue);
+        RuleForEach(q => q.Status).IsInEnum();
+        RuleFor(q => q.Category).IsInEnum();
+        RuleFor(q => q.Severity).IsInEnum();
+    }
+}

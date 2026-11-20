@@ -374,6 +374,94 @@
         }
       }
     },
+    "/api/v1/incidents/map": {
+      "get": {
+        "tags": [
+          "Incidents"
+        ],
+        "summary": "Incidents with coordinates for the operations map, plus a count of those that cannot be plotted.",
+        "parameters": [
+          {
+            "name": "Status",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/IncidentStatus"
+              }
+            }
+          },
+          {
+            "name": "Category",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/IncidentCategory"
+            }
+          },
+          {
+            "name": "Severity",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/Severity"
+            }
+          },
+          {
+            "name": "MinLatitude",
+            "in": "query",
+            "schema": {
+              "type": "number",
+              "format": "double"
+            }
+          },
+          {
+            "name": "MinLongitude",
+            "in": "query",
+            "schema": {
+              "type": "number",
+              "format": "double"
+            }
+          },
+          {
+            "name": "MaxLatitude",
+            "in": "query",
+            "schema": {
+              "type": "number",
+              "format": "double"
+            }
+          },
+          {
+            "name": "MaxLongitude",
+            "in": "query",
+            "schema": {
+              "type": "number",
+              "format": "double"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IncidentMapResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/incidents/{id}": {
       "get": {
         "tags": [
@@ -2657,6 +2745,30 @@
           }
         }
       },
+      "IncidentMapResponse": {
+        "required": [
+          "items",
+          "withoutCoordinates",
+          "truncated"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MapIncident"
+            }
+          },
+          "withoutCoordinates": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "truncated": {
+            "type": "boolean"
+          }
+        },
+        "description": "`WithoutCoordinates` counts matching incidents that cannot be plotted, so the map never implies\n        it shows everything. `Truncated` is true when more than int IncidentMapResponse.MaxItems matched."
+      },
       "IncidentReportResponse": {
         "required": [
           "id",
@@ -2970,6 +3082,95 @@
             "$ref": "#/components/schemas/CurrentUserResponse"
           }
         }
+      },
+      "MapIncident": {
+        "required": [
+          "id",
+          "number",
+          "title",
+          "category",
+          "status",
+          "approvedSeverity",
+          "aiRecommendedSeverity",
+          "latitude",
+          "longitude",
+          "provenance",
+          "precision",
+          "isVerified",
+          "locationText",
+          "geocoderPlaceName",
+          "createdAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "number": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "category": {
+            "$ref": "#/components/schemas/IncidentCategory"
+          },
+          "status": {
+            "$ref": "#/components/schemas/IncidentStatus"
+          },
+          "approvedSeverity": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Severity"
+              }
+            ]
+          },
+          "aiRecommendedSeverity": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Severity"
+              }
+            ]
+          },
+          "latitude": {
+            "type": "number",
+            "format": "double"
+          },
+          "longitude": {
+            "type": "number",
+            "format": "double"
+          },
+          "provenance": {
+            "$ref": "#/components/schemas/LocationProvenance"
+          },
+          "precision": {
+            "$ref": "#/components/schemas/LocationPrecision"
+          },
+          "isVerified": {
+            "type": "boolean"
+          },
+          "locationText": {
+            "type": "string"
+          },
+          "geocoderPlaceName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "description": "One plotted incident. Unverified locations are labelled as such wherever they appear (8.8)."
       },
       "PagedResultOfIncidentListItem": {
         "required": [
