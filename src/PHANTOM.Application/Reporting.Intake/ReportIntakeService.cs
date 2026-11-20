@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using PHANTOM.Application.Abstractions;
 using PHANTOM.Application.Audit;
 using PHANTOM.Application.Common;
+using PHANTOM.Application.Correlation;
 using PHANTOM.Application.Intelligence;
 using PHANTOM.Domain.Audit;
 using PHANTOM.Domain.Common;
@@ -22,6 +23,7 @@ public sealed class ReportIntakeService(
     IIncidentNumberGenerator numberGenerator,
     IAuditWriter audit,
     IAnalysisSignal analysisSignal,
+    ICorrelationService correlation,
     IClock clock,
     ILogger<ReportIntakeService> logger) : IReportIntakeService
 {
@@ -146,6 +148,7 @@ public sealed class ReportIntakeService(
 
             storedKeys.Clear();
             analysisSignal.Notify();
+            await CorrelateBestEffortAsync(incident.Id, cancellationToken).ConfigureAwait(false);
             logger.LogInformation("Report {Reference} submitted: incident {IncidentId}, analysis {AnalysisId}, {AttachmentCount} attachments",
                 reference, incident.Id, analysis.Id, processedFiles.Count);
             return new SubmitReportResponse(reference, now);
@@ -190,6 +193,19 @@ public sealed class ReportIntakeService(
         IncidentStatus.Resolved or IncidentStatus.Closed or IncidentStatus.Rejected => PublicReportStatus.Closed,
         _ => PublicReportStatus.Received,
     };
+
+    /// <summary>The report is already committed; a correlation problem must never fail the submission.</summary>
+    private async Task CorrelateBestEffortAsync(Guid incidentId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await correlation.CorrelateAsync(incidentId, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogError(ex, "Correlation failed for new incident {IncidentId}; the report is unaffected", incidentId);
+        }
+    }
 
     private async Task<Result<SubmitReportResponse>?> FindReplayAsync(string idempotencyKey, CancellationToken cancellationToken)
     {

@@ -97,6 +97,79 @@ namespace PHANTOM.Infrastructure.Persistence.Migrations
                     b.ToTable("audit_logs", (string)null);
                 });
 
+            modelBuilder.Entity("PHANTOM.Domain.Correlation.IncidentRelation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_id");
+
+                    b.Property<DateTimeOffset?>("DecidedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("decided_at");
+
+                    b.Property<Guid?>("DecidedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("decided_by_id");
+
+                    b.Property<string>("Explanation")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("explanation");
+
+                    b.Property<Guid?>("PrimaryIncidentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("primary_incident_id");
+
+                    b.Property<decimal?>("Score")
+                        .HasColumnType("numeric(4,3)")
+                        .HasColumnName("score");
+
+                    b.Property<string>("Signals")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("signals");
+
+                    b.Property<Guid>("SourceIncidentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("source_incident_id");
+
+                    b.Property<Guid>("TargetIncidentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("target_incident_id");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("type");
+
+                    b.HasKey("Id")
+                        .HasName("pk_incident_relations");
+
+                    b.HasIndex("PrimaryIncidentId")
+                        .HasDatabaseName("ix_incident_relations_primary_incident_id");
+
+                    b.HasIndex("TargetIncidentId")
+                        .HasDatabaseName("ix_incident_relations_target_incident_id");
+
+                    b.HasIndex("Type")
+                        .HasDatabaseName("ix_incident_relations_type");
+
+                    b.HasIndex("SourceIncidentId", "TargetIncidentId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_incident_relations_source_incident_id_target_incident_id");
+
+                    b.ToTable("incident_relations", (string)null);
+                });
+
             modelBuilder.Entity("PHANTOM.Domain.Identity.RefreshToken", b =>
                 {
                     b.Property<Guid>("Id")
@@ -692,6 +765,29 @@ namespace PHANTOM.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_incident_reports_reference");
 
                     b.ToTable("incident_reports", (string)null);
+                });
+
+            modelBuilder.Entity("PHANTOM.Domain.Correlation.IncidentRelation", b =>
+                {
+                    b.HasOne("PHANTOM.Domain.Incidents.Incident", null)
+                        .WithMany()
+                        .HasForeignKey("PrimaryIncidentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_incident_relations_incidents_primary_incident_id");
+
+                    b.HasOne("PHANTOM.Domain.Incidents.Incident", null)
+                        .WithMany()
+                        .HasForeignKey("SourceIncidentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_incident_relations_incidents_source_incident_id");
+
+                    b.HasOne("PHANTOM.Domain.Incidents.Incident", null)
+                        .WithMany()
+                        .HasForeignKey("TargetIncidentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_incident_relations_incidents_target_incident_id");
                 });
 
             modelBuilder.Entity("PHANTOM.Domain.Identity.RefreshToken", b =>

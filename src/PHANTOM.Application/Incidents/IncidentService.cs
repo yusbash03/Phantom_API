@@ -7,6 +7,7 @@ using PHANTOM.Application.Audit;
 using PHANTOM.Application.Common;
 using PHANTOM.Domain.Audit;
 using PHANTOM.Domain.Common;
+using PHANTOM.Domain.Correlation;
 using PHANTOM.Domain.Identity;
 using PHANTOM.Domain.Incidents;
 using Severity = PHANTOM.Domain.Incidents.Severity;
@@ -147,6 +148,7 @@ internal sealed class IncidentService(
                 i.Location.Provenance == LocationProvenance.ManuallyVerified,
                 i.LocationNeedsVerification,
                 db.IncidentReports.Count(r => r.IncidentId == i.Id),
+                db.IncidentRelations.Count(r => (r.SourceIncidentId == i.Id || r.TargetIncidentId == i.Id) && r.Type == RelationType.PossibleDuplicate),
                 i.IsDemoData,
                 i.CreatedAt,
                 i.UpdatedAt))

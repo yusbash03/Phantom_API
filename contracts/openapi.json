@@ -1290,6 +1290,219 @@
         }
       }
     },
+    "/api/v1/incidents/{incidentId}/relations": {
+      "get": {
+        "tags": [
+          "Relations"
+        ],
+        "parameters": [
+          {
+            "name": "incidentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RelationResponse"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Relations"
+        ],
+        "summary": "Links another incident (by number) as Related without closing either.",
+        "parameters": [
+          {
+            "name": "incidentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LinkIncidentRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LinkIncidentRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/LinkIncidentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RelationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/relations/{id}": {
+      "put": {
+        "tags": [
+          "Relations"
+        ],
+        "summary": "Confirm a duplicate (requires the primary), mark related, or mark unrelated (never re-suggested).",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RelationDecisionRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RelationDecisionRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/RelationDecisionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RelationDecisionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/users": {
       "get": {
         "tags": [
@@ -1829,6 +2042,54 @@
           }
         }
       },
+      "CorrelationSignals": {
+        "required": [
+          "geo",
+          "time",
+          "category",
+          "text",
+          "locations",
+          "distanceMeters",
+          "minutesApart",
+          "sharedPlaceTokens"
+        ],
+        "type": "object",
+        "properties": {
+          "geo": {
+            "$ref": "#/components/schemas/SignalScore"
+          },
+          "time": {
+            "$ref": "#/components/schemas/SignalScore"
+          },
+          "category": {
+            "$ref": "#/components/schemas/SignalScore"
+          },
+          "text": {
+            "$ref": "#/components/schemas/SignalScore"
+          },
+          "locations": {
+            "$ref": "#/components/schemas/SignalScore"
+          },
+          "distanceMeters": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "minutesApart": {
+            "type": "number",
+            "format": "double"
+          },
+          "sharedPlaceTokens": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "description": "Signal breakdown stored with a suggestion and shown to coordinators."
+      },
       "CreateUserRequest": {
         "required": [
           "email",
@@ -2214,6 +2475,7 @@
           "locationIsVerified",
           "locationNeedsVerification",
           "reportCount",
+          "possibleDuplicateCount",
           "isDemoData",
           "createdAt",
           "updatedAt"
@@ -2269,6 +2531,10 @@
             "type": "boolean"
           },
           "reportCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "possibleDuplicateCount": {
             "type": "integer",
             "format": "int32"
           },
@@ -2470,6 +2736,17 @@
           }
         },
         "description": "Schema `phantom.intel.v1` (Requirement 6.2). A recommendation for a coordinator, never a decision."
+      },
+      "LinkIncidentRequest": {
+        "required": [
+          "otherIncidentNumber"
+        ],
+        "type": "object",
+        "properties": {
+          "otherIncidentNumber": {
+            "type": "string"
+          }
+        }
       },
       "LocationPrecision": {
         "enum": [
@@ -2716,6 +2993,233 @@
           }
         }
       },
+      "RelatedIncidentSummary": {
+        "required": [
+          "id",
+          "number",
+          "title",
+          "status",
+          "category",
+          "approvedSeverity",
+          "locationText",
+          "createdAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "number": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/IncidentStatus"
+          },
+          "category": {
+            "$ref": "#/components/schemas/IncidentCategory"
+          },
+          "approvedSeverity": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Severity"
+              }
+            ]
+          },
+          "locationText": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "RelationDecision": {
+        "enum": [
+          "ConfirmDuplicate",
+          "Related",
+          "Unrelated"
+        ]
+      },
+      "RelationDecisionRequest": {
+        "required": [
+          "decision",
+          "primaryIncidentId"
+        ],
+        "type": "object",
+        "properties": {
+          "decision": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/RelationDecision"
+              }
+            ]
+          },
+          "primaryIncidentId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          }
+        },
+        "description": "`PrimaryIncidentId` is required to confirm a duplicate: it stays open and receives the reports."
+      },
+      "RelationDecisionResponse": {
+        "required": [
+          "id",
+          "type",
+          "primaryIncidentId",
+          "decidedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "type": {
+            "$ref": "#/components/schemas/RelationType"
+          },
+          "primaryIncidentId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "decidedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "RelationResponse": {
+        "required": [
+          "id",
+          "type",
+          "score",
+          "explanation",
+          "signals",
+          "other",
+          "primaryIncidentId",
+          "createdBy",
+          "createdAt",
+          "decidedBy",
+          "decidedAt",
+          "availableDecisions",
+          "confirmablePrimaryIds"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "type": {
+            "$ref": "#/components/schemas/RelationType"
+          },
+          "score": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "explanation": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "signals": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/CorrelationSignals"
+              }
+            ]
+          },
+          "other": {
+            "$ref": "#/components/schemas/RelatedIncidentSummary"
+          },
+          "primaryIncidentId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "createdBy": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UserRef"
+              }
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "decidedBy": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UserRef"
+              }
+            ]
+          },
+          "decidedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "availableDecisions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RelationDecision"
+            }
+          },
+          "confirmablePrimaryIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "description": "A relation seen from one incident. `Other` is the incident on the far side of the pair."
+      },
+      "RelationType": {
+        "enum": [
+          "PossibleDuplicate",
+          "ConfirmedDuplicate",
+          "Related",
+          "Unrelated"
+        ]
+      },
       "ResolveIncidentRequest": {
         "required": [
           "resolutionSummary",
@@ -2739,6 +3243,22 @@
           "High",
           "Critical"
         ]
+      },
+      "SignalScore": {
+        "required": [
+          "available",
+          "value"
+        ],
+        "type": "object",
+        "properties": {
+          "available": {
+            "type": "boolean"
+          },
+          "value": {
+            "type": "number",
+            "format": "double"
+          }
+        }
       },
       "SortDirection": {
         "enum": [
@@ -2984,6 +3504,9 @@
     },
     {
       "name": "PublicReports"
+    },
+    {
+      "name": "Relations"
     },
     {
       "name": "Users"

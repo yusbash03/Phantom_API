@@ -54,6 +54,7 @@ public sealed record IncidentListItem(
     bool LocationIsVerified,
     bool LocationNeedsVerification,
     int ReportCount,
+    int PossibleDuplicateCount,
     bool IsDemoData,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt);

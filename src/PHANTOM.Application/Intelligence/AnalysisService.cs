@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using PHANTOM.Application.Abstractions;
 using PHANTOM.Application.Audit;
+using PHANTOM.Application.Correlation;
 using PHANTOM.Application.Incidents;
 using PHANTOM.Domain.Audit;
 using PHANTOM.Domain.Common;
@@ -25,6 +26,7 @@ internal sealed class AnalysisService(
     IPhantomDbContext db,
     IIncidentIntelligenceService intelligence,
     IAnalysisSignal signal,
+    ICorrelationService correlation,
     IAuditWriter audit,
     ICurrentUser currentUser,
     IClock clock,
@@ -87,6 +89,17 @@ internal sealed class AnalysisService(
                     latencyMs,
                 });
             await SaveWithRecommendationAsync(analysis.IncidentId, result, now, cancellationToken);
+
+            // AI-extracted place names are a correlation signal, so compare again (Requirement 7.1).
+            try
+            {
+                await correlation.CorrelateAsync(analysis.IncidentId, cancellationToken);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                logger.LogError(ex, "Correlation after analysis {AnalysisId} failed; the analysis result is kept", analysis.Id);
+            }
+
             logger.LogInformation("Analysis {AnalysisId} for incident {IncidentId} succeeded in {LatencyMs} ms ({Provider}/{Model})",
                 analysis.Id, analysis.IncidentId, latencyMs, outcome.Provider, outcome.Model);
             return;

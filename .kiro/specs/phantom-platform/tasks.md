@@ -106,7 +106,10 @@ Do not start a Phase 3 feature while the previous one has unresolved critical fa
   - About 100 analyses from earlier e2e/manual reports are still Pending in the Neon dev database. They will be processed through Gemini the next time the API runs with the worker enabled.
   - AI recommendation panel (clearly labelled), failure state with retry, side-by-side AI vs approved values
   - _Requirements: 6.12, 15.4_
-- [ ] 20. Incident correlation [API + UI]
+- [x] 20. Incident correlation [API + UI]
+  - Verified 2026-11-20: 105 unit tests. FsCheck properties cover bounded, symmetric, monotone and identical-pair-meets-threshold. Edge cases cover missing coordinates, identical text, opposite and "Other" categories, window and radius boundaries, sparse evidence, and street words not counting as shared places. 83 integration tests (7 new, stable over 3 runs), 44 Vitest (7 new) and 16 Playwright tests (desktop + mobile, incl. report → suggestion → confirm duplicate) all pass.
+  - Correlation runs best-effort on intake and after AI analysis. It never changes, merges or hides anything; only coordinator decisions do. A confirmed duplicate keeps every report: reports move to the primary with `OriginalIncidentId` preserved, each move is audited, and the closed incident stays readable. Unrelated pairs are never re-suggested.
+  - Weights and thresholds come from configuration (`Correlation:*`, validated on start); the admin screen is task 34. Added `PrimaryIncidentId` on relations (not in the design) to record which incident stays open.
   - Pure `CorrelationScorer` with FsCheck properties (bounds, symmetry, monotonicity) and edge-case tests (missing coords, identical text, opposite categories, window boundaries); `CorrelationService`; confirm/unrelated/related decisions; possible-duplicates UI
   - _Requirements: 7.1–7.8_
 - [ ] 21. Geocoding [API]

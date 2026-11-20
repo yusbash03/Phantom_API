@@ -25,8 +25,8 @@ public sealed class IncidentReport
     /// <summary>Human-readable reference matching the incident number (e.g. PH-2026-000001).</summary>
     public string Reference { get; private set; }
 
-    /// <summary>The incident this report currently belongs to (mutable on duplicate merge).</summary>
-    public Guid IncidentId { get; set; }
+    /// <summary>The incident this report currently belongs to. Changes only via <see cref="ReassignTo"/>.</summary>
+    public Guid IncidentId { get; private set; }
 
     /// <summary>The incident this report was originally submitted against; never changes.</summary>
     public Guid OriginalIncidentId { get; private set; }
@@ -96,5 +96,19 @@ public sealed class IncidentReport
             ClientIpHash = clientIpHash,
             IsDemoData = isDemoData,
         };
+    }
+
+    /// <summary>
+    /// Associates the report with the primary incident of a confirmed duplicate. The report itself, and
+    /// <see cref="OriginalIncidentId"/>, never change.
+    /// </summary>
+    public void ReassignTo(Guid incidentId)
+    {
+        if (incidentId == Guid.Empty)
+        {
+            throw new ArgumentException("A target incident is required.", nameof(incidentId));
+        }
+
+        IncidentId = incidentId;
     }
 }

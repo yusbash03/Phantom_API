@@ -22,4 +22,9 @@ public static class AuditActions
     public const string AiAnalysisCompleted = "ai_analysis.completed";
     public const string AiAnalysisFailed = "ai_analysis.failed";
     public const string AiAnalysisRetryRequested = "ai_analysis.retry_requested";
+
+    public const string RelationSuggested = "relation.suggested";
+    public const string RelationLinked = "relation.linked";
+    public const string RelationDecided = "relation.decided";
+    public const string ReportReassociated = "report.reassociated";
 }

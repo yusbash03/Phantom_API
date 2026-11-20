@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using PHANTOM.Application.Audit;
 using PHANTOM.Application.Auth;
+using PHANTOM.Application.Correlation;
 using PHANTOM.Application.Incidents;
 using PHANTOM.Application.Intelligence;
 using PHANTOM.Application.Reporting.Intake;
@@ -19,6 +20,11 @@ public static class DependencyInjection
             .Validate(o => o.RefreshTokenLifetimeDays is >= 1 and <= 30, "Auth:RefreshTokenLifetimeDays must be 1-30.")
             .ValidateOnStart();
 
+        services.AddOptions<CorrelationOptions>()
+            .Bind(configuration.GetSection(CorrelationOptions.SectionName))
+            .Validate(o => o.IsValid(), "Correlation settings are out of range (weights 0-1 with a positive sum, threshold 0-1, window 0-168 h).")
+            .ValidateOnStart();
+
         services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly, includeInternalTypes: true);
         services.AddScoped<IAuditWriter, AuditWriter>();
         services.AddScoped<IAuthService, AuthService>();
@@ -26,6 +32,7 @@ public static class DependencyInjection
         services.AddScoped<IReportIntakeService, ReportIntakeService>();
         services.AddScoped<IIncidentService, IncidentService>();
         services.AddScoped<IAnalysisService, AnalysisService>();
+        services.AddScoped<ICorrelationService, CorrelationService>();
         return services;
     }
 }
