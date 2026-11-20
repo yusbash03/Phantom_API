@@ -39,6 +39,13 @@ public sealed class Incident
 
     /// <summary>When the geocoding worker claimed this incident; used to recover attempts stuck after a crash.</summary>
     public DateTimeOffset? GeocodingClaimedAt { get; private set; }
+
+    /// <summary>
+    /// Incremented only when geocoding is re-requested. It is the concurrency guard for the geocoding
+    /// hand-off: an in-flight attempt cannot overwrite a re-request, while the geocoder's routine status
+    /// changes never make a coordinator's save conflict.
+    /// </summary>
+    public int GeocodingGeneration { get; private set; }
     public Guid? AssignedCoordinatorId { get; private set; }
     public Guid? VerifiedById { get; private set; }
     public DateTimeOffset? VerifiedAt { get; private set; }
@@ -304,6 +311,25 @@ public sealed class Incident
         }
 
         GeocodingStatus = GeocodingStatus.Pending;
+        GeocodingGeneration++;
+        return true;
+    }
+
+    /// <summary>
+    /// Ends a geocoding claim that has nothing left to do because the incident is already located or
+    /// verified, so the claim is never left in Processing.
+    /// </summary>
+    public bool ReleaseGeocodingClaim()
+    {
+        if (GeocodingStatus != GeocodingStatus.Processing || !(Location.HasCoordinates || Location.IsVerified))
+        {
+            return false;
+        }
+
+        GeocodingStatus = Location.Provenance is LocationProvenance.Geocoded or LocationProvenance.AiInferred
+            ? GeocodingStatus.Succeeded
+            : GeocodingStatus.NotRequired;
+        GeocodingClaimedAt = null;
         return true;
     }
 

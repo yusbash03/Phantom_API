@@ -1,6 +1,7 @@
 using FluentValidation;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using PHANTOM.Application.Assignments;
 using PHANTOM.Application.Audit;
 using PHANTOM.Application.Auth;
 using PHANTOM.Application.Correlation;
@@ -37,6 +38,7 @@ public static class DependencyInjection
         services.AddScoped<ICorrelationService, CorrelationService>();
         services.AddScoped<IGeocodingProcessor, GeocodingProcessor>();
         services.AddScoped<IResponderService, ResponderService>();
+        services.AddScoped<IAssignmentService, AssignmentService>();
         return services;
     }
 }

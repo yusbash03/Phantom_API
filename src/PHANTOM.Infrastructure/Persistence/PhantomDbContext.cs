@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using PHANTOM.Application.Abstractions;
+using PHANTOM.Domain.Assignments;
 using PHANTOM.Domain.Audit;
 using PHANTOM.Domain.Correlation;
 using PHANTOM.Domain.Identity;
@@ -20,6 +21,8 @@ public sealed class PhantomDbContext(DbContextOptions<PhantomDbContext> options)
     public DbSet<IncidentAnalysis> IncidentAnalyses => Set<IncidentAnalysis>();
     public DbSet<IncidentRelation> IncidentRelations => Set<IncidentRelation>();
     public DbSet<Responder> Responders => Set<Responder>();
+    public DbSet<ResponderAssignment> ResponderAssignments => Set<ResponderAssignment>();
+    public DbSet<IncidentUpdate> IncidentUpdates => Set<IncidentUpdate>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

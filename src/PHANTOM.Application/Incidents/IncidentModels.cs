@@ -28,6 +28,7 @@ public enum IncidentAction
     Close,
     ChangeSeverity,
     VerifyLocation,
+    Assign,
 }
 
 public sealed record IncidentListQuery(
@@ -37,6 +38,7 @@ public sealed record IncidentListQuery(
     DateTimeOffset? From = null,
     DateTimeOffset? To = null,
     string? Search = null,
+    bool? HasActiveAssignment = null,
     IncidentSortField Sort = IncidentSortField.CreatedAt,
     SortDirection Direction = SortDirection.Desc,
     int Page = 1,

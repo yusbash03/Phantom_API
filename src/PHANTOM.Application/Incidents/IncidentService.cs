@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using PHANTOM.Application.Abstractions;
 using PHANTOM.Application.Audit;
 using PHANTOM.Application.Common;
+using PHANTOM.Domain.Assignments;
 using PHANTOM.Domain.Audit;
 using PHANTOM.Domain.Common;
 using PHANTOM.Domain.Correlation;
@@ -122,6 +123,14 @@ internal sealed class IncidentService(
                 || i.Description.ToLower().Contains(term)
                 || i.Location.Text.ToLower().Contains(term));
 #pragma warning restore CA1304, CA1311, CA1862
+        }
+
+        // Requirement 5.11: assigned / unassigned = has / lacks a non-terminal responder assignment.
+        if (query.HasActiveAssignment.HasValue)
+        {
+            var wanted = query.HasActiveAssignment.Value;
+            incidents = incidents.Where(i => db.ResponderAssignments.Any(a => a.IncidentId == i.Id
+                && a.Status != AssignmentStatus.Completed && a.Status != AssignmentStatus.Declined && a.Status != AssignmentStatus.Cancelled) == wanted);
         }
 
         var total = await incidents.CountAsync(cancellationToken);
@@ -467,6 +476,11 @@ internal sealed class IncidentService(
         if (!terminal)
         {
             actions.Add(IncidentAction.VerifyLocation);
+        }
+
+        if (incident.Status is IncidentStatus.Verified or IncidentStatus.Assigned or IncidentStatus.InProgress)
+        {
+            actions.Add(IncidentAction.Assign);
         }
 
         return actions;

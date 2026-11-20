@@ -26,12 +26,23 @@ public sealed class ResponderAssignment
     public string? EndedReason { get; private set; }
     public string? OverrideReason { get; private set; }
     public string? CompletionNotes { get; private set; }
-    public uint Version { get; private set; }
+    /// <summary>Optimistic-concurrency version, incremented on every status change.</summary>
+    public int Version { get; private set; }
 
     public bool IsActive => !AssignmentStatusPolicy.IsTerminal(Status);
 
-    public static ResponderAssignment Create(Guid id, Guid incidentId, Guid responderId, Guid assignedById, DateTimeOffset now, string? overrideReason = null) =>
-        new()
+    /// <summary>
+    /// Only an identified coordinator creates assignments (Requirement 11.1); there is no system or AI path
+    /// (11.7), so an empty <paramref name="assignedById"/> is refused.
+    /// </summary>
+    public static ResponderAssignment Create(Guid id, Guid incidentId, Guid responderId, Guid assignedById, DateTimeOffset now, string? overrideReason = null)
+    {
+        if (assignedById == Guid.Empty)
+        {
+            throw new ArgumentException("An assignment must be made by an identified coordinator.", nameof(assignedById));
+        }
+
+        return new()
         {
             Id = id,
             IncidentId = incidentId,
@@ -41,6 +52,7 @@ public sealed class ResponderAssignment
             Status = AssignmentStatus.Assigned,
             OverrideReason = string.IsNullOrWhiteSpace(overrideReason) ? null : overrideReason.Trim(),
         };
+    }
 
     /// <summary>Acknowledgement is acceptance (design decision D6).</summary>
     public Result Acknowledge(DateTimeOffset now) => Move(AssignmentStatus.Acknowledged, () => AcknowledgedAt = now);
@@ -90,6 +102,7 @@ public sealed class ResponderAssignment
         }
 
         Status = target;
+        Version++;
         onSuccess();
         return Result.Success();
     }

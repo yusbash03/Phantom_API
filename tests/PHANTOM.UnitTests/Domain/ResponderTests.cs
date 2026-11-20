@@ -89,3 +89,30 @@ public sealed class ResponderTests
         Assert.Equal(ResponderAvailability.Unavailable, responder.Availability);
     }
 }
+
+public sealed class ResponderAssignmentEffectsTests
+{
+    private static readonly DateTimeOffset Now = new(2026, 11, 20, 9, 0, 0, TimeSpan.Zero);
+
+    [Fact]
+    public void Assignment_moves_the_responder_to_assigned_and_release_returns_them_without_version_changes()
+    {
+        var responder = Responder.Create(Guid.NewGuid(), "MED-09", "Name", "Team", null, null, [], null, Now).Value;
+
+        responder.MarkAssigned(Now);
+        Assert.Equal(ResponderAvailability.Assigned, responder.Availability);
+        responder.ReleaseFromAssignment(Now);
+        Assert.Equal(ResponderAvailability.Available, responder.Availability);
+        Assert.Equal(0, responder.Version);
+    }
+
+    [Fact]
+    public void Each_status_change_bumps_the_assignment_version()
+    {
+        var assignment = PHANTOM.Domain.Assignments.ResponderAssignment.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Now);
+        Assert.True(assignment.Acknowledge(Now).IsSuccess);
+        Assert.True(assignment.MarkEnRoute(Now).IsSuccess);
+        Assert.True(assignment.MarkEnRoute(Now).IsFailure);
+        Assert.Equal(2, assignment.Version);
+    }
+}

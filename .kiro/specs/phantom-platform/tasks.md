@@ -86,7 +86,7 @@ Do not start a Phase 3 feature while the previous one has unresolved critical fa
   - _Requirements: 4.1–4.10_
 - [x] 16. Incident list and detail [API + UI]
   - Verified 2026-11-19: 47 unit + 67 integration (16 new) + 30 Vitest (9 new) + 12 Playwright (desktop + mobile, real API + Neon) tests passing
-  - The `assigned/unassigned` list filter (5.11) needs the assignments table, so it is delivered with task 24. Close-as-duplicate belongs to the task 20 correlation decisions.
+  - The `assigned/unassigned` list filter (5.11) was delivered with task 24. Close-as-duplicate was delivered with task 20.
   - The attachment download endpoint (`GET /attachments/{id}/content`, staff, `Content-Disposition: attachment`, `nosniff`) is delivered here
   - Query endpoints with filters/pagination, edit, transition endpoints, severity, concurrency conflict handling; list and detail screens
   - _Requirements: 5.1–5.11, 18.1_
@@ -133,7 +133,11 @@ Do not start a Phase 3 feature while the previous one has unresolved critical fa
   - Admins create, edit, deactivate and reactivate responders and set their availability. Coordinators read only. A responder sets their own Available/Unavailable on the Account page. "Assigned" can never be set by hand (10.4).
   - **Hand-off to task 24:** `ResponderService.HasActiveAssignmentAsync` returns false until assignments exist. Task 24 must replace it with a real query and set Assigned or release availability from assignment events.
   - _Requirements: 10.1–10.4_
-- [ ] 24. Assignment workflow [API + UI]
+- [x] 24. Assignment workflow [API + UI]
+  - Verified 2026-11-20: 141 unit tests pass (7 new), including a bytecode scan proving `AssignmentService` is the only caller of `ResponderAssignment.Create` (11.7), constructor checks showing AI, correlation and geocoding cannot reach assignments, and the domain refusing an unidentified creator. 109 integration tests pass (7 new), stable over 3 runs: lifecycle with System-audited incident transitions, 404 for non-assignees (11.5, critical property 5), override rules (11.2), decline/cancel reverting the incident, ordered steps, the assigned/unassigned list filter, and no assignment from a Critical AI result. 66 Vitest (7 new) and 28 Playwright tests (2 new: full coordinator → responder → completion flow on desktop and mobile) pass.
+  - Completed the task 16 hand-off (5.11 assigned/unassigned filter) and the task 23 hand-off (`HasActiveAssignmentAsync` is now a real query; responders move to and from Assigned automatically).
+  - **Regression from task 21 found and fixed:** using `geocoding_status` as a concurrency token gave coordinators false 409s on fresh incidents. It was replaced by a `geocoding_generation` counter bumped only on re-queue. Two further geocoding bugs found and fixed: the AI-side re-queue acted on a stale tracked entity (now one conditional UPDATE), and a superseded attempt could leave a claim stuck in Processing (now released). Vitest `testTimeout` was raised to 15 s because UI tests timed out under background load.
+  - Responders now land on My assignments after sign-in. "Notify the responder" (11.1) means the assignment appears on My assignments (polled every 30 s); push/in-app notifications are task 25.
   - Assign/cancel (coordinator), acknowledge/decline/status/updates/complete (assignee only), system-driven incident transitions, "My assignments" screen
   - Tests: non-assignee gets 404; AI never creates assignments; transition properties
   - _Requirements: 11.1–11.8_

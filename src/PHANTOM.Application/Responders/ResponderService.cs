@@ -4,6 +4,7 @@ using PHANTOM.Application.Abstractions;
 using PHANTOM.Application.Audit;
 using PHANTOM.Application.Common;
 using PHANTOM.Application.Incidents;
+using PHANTOM.Domain.Assignments;
 using PHANTOM.Domain.Audit;
 using PHANTOM.Domain.Common;
 using PHANTOM.Domain.Identity;
@@ -238,16 +239,10 @@ internal sealed class ResponderService(
         return result;
     }
 
-    /// <summary>
-    /// Whether the responder has a non-terminal assignment. Assignments are introduced by task 24, which
-    /// replaces this with a query; until then no responder can have one.
-    /// </summary>
-    private static Task<bool> HasActiveAssignmentAsync(Guid responderId, CancellationToken cancellationToken)
-    {
-        _ = responderId;
-        _ = cancellationToken;
-        return Task.FromResult(false);
-    }
+    /// <summary>Whether the responder has a non-terminal assignment (drives Requirement 10.4).</summary>
+    private Task<bool> HasActiveAssignmentAsync(Guid responderId, CancellationToken cancellationToken) =>
+        db.ResponderAssignments.AnyAsync(a => a.ResponderId == responderId
+            && a.Status != AssignmentStatus.Completed && a.Status != AssignmentStatus.Declined && a.Status != AssignmentStatus.Cancelled, cancellationToken);
 
     private async Task<Result<ResponderResponse>> MutateAsync(Guid id, int version, Func<Responder, Task<Result>> apply, CancellationToken cancellationToken)
     {

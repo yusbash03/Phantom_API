@@ -49,7 +49,7 @@ internal sealed class GeocodingProcessor(
             var outcome = await geocoder.GeocodeAsync(query, cancellationToken);
             if (outcome.Kind == GeocodeOutcomeKind.Found)
             {
-                await SaveAsync(incidentId, cancellationToken: cancellationToken, apply: (current, now) =>
+                var saved = await SaveAsync(incidentId, cancellationToken: cancellationToken, apply: (current, now) =>
                 {
                     var geocoded = current.Location.WithGeocodedCoordinates(outcome.Latitude!.Value, outcome.Longitude!.Value, outcome.Precision, fromAi, outcome.PlaceName);
                     if (geocoded.IsFailure || !current.ApplyGeocode(geocoded.Value, now))
@@ -70,7 +70,15 @@ internal sealed class GeocodingProcessor(
                         new { source = fromAi ? "AI-extracted place name" : "reported location text" });
                     return true;
                 });
-                logger.LogInformation("Incident {IncidentId} geocoded ({Precision}, from {Source})", incidentId, outcome.Precision, fromAi ? "AI place" : "location text");
+                if (saved)
+                {
+                    logger.LogInformation("Incident {IncidentId} geocoded ({Precision}, from {Source})", incidentId, outcome.Precision, fromAi ? "AI place" : "location text");
+                }
+                else
+                {
+                    logger.LogInformation("Geocoding of incident {IncidentId} was superseded before saving", incidentId);
+                }
+
                 return;
             }
 
@@ -92,26 +100,40 @@ internal sealed class GeocodingProcessor(
     }
 
     /// <summary>System write that yields to concurrent human changes: reload and re-apply on conflict.</summary>
-    private async Task SaveAsync(Guid incidentId, Func<Incident, DateTimeOffset, bool> apply, CancellationToken cancellationToken)
+    private async Task<bool> SaveAsync(Guid incidentId, Func<Incident, DateTimeOffset, bool> apply, CancellationToken cancellationToken)
     {
         for (var attempt = 1; ; attempt++)
         {
             var current = await db.Incidents.FirstOrDefaultAsync(i => i.Id == incidentId, cancellationToken);
-            if (current is null || current.GeocodingStatus != GeocodingStatus.Processing || !apply(current, clock.UtcNow))
+            if (current is null || current.GeocodingStatus != GeocodingStatus.Processing)
             {
-                return;
+                // Superseded (re-queued or verified): this attempt stands down.
+                return false;
+            }
+
+            if (!apply(current, clock.UtcNow))
+            {
+                // Already located or verified by other means: release the claim rather than leave it in Processing.
+                if (current.ReleaseGeocodingClaim())
+                {
+                    await db.SaveChangesAsync(cancellationToken);
+                }
+
+                return false;
             }
 
             try
             {
                 await db.SaveChangesAsync(cancellationToken);
-                return;
+                return true;
             }
             catch (DbUpdateConcurrencyException ex) when (attempt < MaxConcurrencyRetries)
             {
+                // Detach rather than reload: a reload does not revert a replaced owned Location, so the
+                // next attempt would see stale in-memory coordinates. Detached, it reads a fresh incident.
                 foreach (var entry in ex.Entries)
                 {
-                    await entry.ReloadAsync(cancellationToken);
+                    entry.State = EntityState.Detached;
                 }
             }
         }

@@ -198,35 +198,24 @@ internal sealed class AnalysisService(
 
     /// <summary>
     /// When the location text could not be geocoded, the AI-extracted place names give it another chance
-    /// (design §5). Best effort: a conflicting human change simply wins.
+    /// (design §5). One conditional UPDATE, mirroring <see cref="Incident.RequestGeocodingRetry"/>: it
+    /// re-reads nothing from the change tracker, so it can neither act on a stale status nor overwrite a
+    /// geocode that finished in the meantime.
     /// </summary>
     private async Task RequeueGeocodingAsync(Guid incidentId, CancellationToken cancellationToken)
     {
-        for (var attempt = 1; attempt <= MaxConcurrencyRetries; attempt++)
+        var requeued = await db.Incidents
+            .Where(i => i.Id == incidentId
+                && i.Location.Latitude == null
+                && i.Location.Provenance != LocationProvenance.ManuallyVerified
+                && (i.GeocodingStatus == GeocodingStatus.NoResult || i.GeocodingStatus == GeocodingStatus.Failed || i.GeocodingStatus == GeocodingStatus.Processing))
+            .ExecuteUpdateAsync(set => set
+                .SetProperty(i => i.GeocodingStatus, GeocodingStatus.Pending)
+                .SetProperty(i => i.GeocodingGeneration, i => i.GeocodingGeneration + 1), cancellationToken);
+        if (requeued > 0)
         {
-            var incident = await db.Incidents.FirstOrDefaultAsync(i => i.Id == incidentId, cancellationToken);
-            if (incident is null || !incident.RequestGeocodingRetry())
-            {
-                return;
-            }
-
-            try
-            {
-                await db.SaveChangesAsync(cancellationToken);
-                geocodingSignal.Notify();
-                return;
-            }
-            catch (DbUpdateConcurrencyException ex)
-            {
-                // The geocoder (or a person) changed the incident meanwhile; reload and decide again.
-                foreach (var entry in ex.Entries)
-                {
-                    await entry.ReloadAsync(cancellationToken);
-                }
-            }
+            geocodingSignal.Notify();
         }
-
-        logger.LogWarning("Could not re-queue geocoding for incident {IncidentId} after {Attempts} attempts", incidentId, MaxConcurrencyRetries);
     }
 
     /// <summary>

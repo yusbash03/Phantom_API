@@ -89,6 +89,28 @@ public sealed class IncidentLocationTests
     }
 
     [Fact]
+    public void A_claim_with_nothing_left_to_do_is_released_not_left_processing()
+    {
+        var reported = Incident.Create(Guid.NewGuid(), "PH-2026-000502", "Smoke", "Smoke seen.", IncidentCategory.Fire,
+            Location.Reported("Allen Avenue", 6.6m, 3.35m).Value, IncidentTestBuilder.Now).Value;
+        Assert.False(reported.ReleaseGeocodingClaim());
+
+        var pending = Unlocated();
+        Assert.False(pending.ReleaseGeocodingClaim());
+        Assert.Equal(GeocodingStatus.Pending, pending.GeocodingStatus);
+    }
+
+    [Fact]
+    public void Requeue_bumps_the_geocoding_generation()
+    {
+        var incident = Unlocated();
+        incident.MarkGeocodingUnsuccessful(noResult: true, IncidentTestBuilder.Now);
+        Assert.True(incident.RequestGeocodingRetry());
+        Assert.Equal(1, incident.GeocodingGeneration);
+        Assert.Equal(0, incident.Version);
+    }
+
+    [Fact]
     public void Verification_is_a_human_decision_that_bumps_the_version()
     {
         var incident = Unlocated();

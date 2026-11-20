@@ -22,6 +22,95 @@ namespace PHANTOM.Infrastructure.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("PHANTOM.Domain.Assignments.ResponderAssignment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset?>("AcknowledgedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("acknowledged_at");
+
+                    b.Property<DateTimeOffset>("AssignedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("assigned_at");
+
+                    b.Property<Guid>("AssignedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("assigned_by_id");
+
+                    b.Property<DateTimeOffset?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("completed_at");
+
+                    b.Property<string>("CompletionNotes")
+                        .HasMaxLength(5000)
+                        .HasColumnType("character varying(5000)")
+                        .HasColumnName("completion_notes");
+
+                    b.Property<DateTimeOffset?>("EnRouteAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("en_route_at");
+
+                    b.Property<DateTimeOffset?>("EndedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("ended_at");
+
+                    b.Property<string>("EndedReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("ended_reason");
+
+                    b.Property<Guid>("IncidentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("incident_id");
+
+                    b.Property<DateTimeOffset?>("OnSceneAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("on_scene_at");
+
+                    b.Property<string>("OverrideReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("override_reason");
+
+                    b.Property<Guid>("ResponderId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("responder_id");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("status");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_responder_assignments");
+
+                    b.HasIndex("AssignedById")
+                        .HasDatabaseName("ix_responder_assignments_assigned_by_id");
+
+                    b.HasIndex("IncidentId", "AssignedAt")
+                        .HasDatabaseName("ix_responder_assignments_incident_id_assigned_at");
+
+                    b.HasIndex("IncidentId", "ResponderId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_responder_assignments_active_pair")
+                        .HasFilter("status NOT IN ('Completed', 'Declined', 'Cancelled')");
+
+                    b.HasIndex("ResponderId", "Status")
+                        .HasDatabaseName("ix_responder_assignments_responder_id_status");
+
+                    b.ToTable("responder_assignments", (string)null);
+                });
+
             modelBuilder.Entity("PHANTOM.Domain.Audit.AuditLog", b =>
                 {
                     b.Property<long>("Id")
@@ -481,8 +570,12 @@ namespace PHANTOM.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("geocoding_claimed_at");
 
-                    b.Property<string>("GeocodingStatus")
+                    b.Property<int>("GeocodingGeneration")
                         .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("geocoding_generation");
+
+                    b.Property<string>("GeocodingStatus")
                         .IsRequired()
                         .HasMaxLength(40)
                         .HasColumnType("character varying(40)")
@@ -781,6 +874,56 @@ namespace PHANTOM.Infrastructure.Persistence.Migrations
                     b.ToTable("incident_reports", (string)null);
                 });
 
+            modelBuilder.Entity("PHANTOM.Domain.Incidents.IncidentUpdate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("AssignmentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("assignment_id");
+
+                    b.Property<Guid>("AuthorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("author_id");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("body");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("IncidentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("incident_id");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("kind");
+
+                    b.HasKey("Id")
+                        .HasName("pk_incident_updates");
+
+                    b.HasIndex("AssignmentId")
+                        .HasDatabaseName("ix_incident_updates_assignment_id");
+
+                    b.HasIndex("AuthorId")
+                        .HasDatabaseName("ix_incident_updates_author_id");
+
+                    b.HasIndex("IncidentId", "CreatedAt")
+                        .HasDatabaseName("ix_incident_updates_incident_id_created_at");
+
+                    b.ToTable("incident_updates", (string)null);
+                });
+
             modelBuilder.Entity("PHANTOM.Domain.Responders.Responder", b =>
                 {
                     b.Property<Guid>("Id")
@@ -876,6 +1019,30 @@ namespace PHANTOM.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_responders_is_active_availability");
 
                     b.ToTable("responders", (string)null);
+                });
+
+            modelBuilder.Entity("PHANTOM.Domain.Assignments.ResponderAssignment", b =>
+                {
+                    b.HasOne("PHANTOM.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("AssignedById")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_responder_assignments_users_assigned_by_id");
+
+                    b.HasOne("PHANTOM.Domain.Incidents.Incident", null)
+                        .WithMany()
+                        .HasForeignKey("IncidentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_responder_assignments_incidents_incident_id");
+
+                    b.HasOne("PHANTOM.Domain.Responders.Responder", null)
+                        .WithMany()
+                        .HasForeignKey("ResponderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_responder_assignments_responders_responder_id");
                 });
 
             modelBuilder.Entity("PHANTOM.Domain.Correlation.IncidentRelation", b =>
@@ -1025,6 +1192,29 @@ namespace PHANTOM.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_incident_reports_incidents_incident_id");
+                });
+
+            modelBuilder.Entity("PHANTOM.Domain.Incidents.IncidentUpdate", b =>
+                {
+                    b.HasOne("PHANTOM.Domain.Assignments.ResponderAssignment", null)
+                        .WithMany()
+                        .HasForeignKey("AssignmentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_incident_updates_responder_assignments_assignment_id");
+
+                    b.HasOne("PHANTOM.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("AuthorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_incident_updates_users_author_id");
+
+                    b.HasOne("PHANTOM.Domain.Incidents.Incident", null)
+                        .WithMany()
+                        .HasForeignKey("IncidentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_incident_updates_incidents_incident_id");
                 });
 
             modelBuilder.Entity("PHANTOM.Domain.Responders.Responder", b =>

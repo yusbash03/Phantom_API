@@ -17,8 +17,8 @@ internal sealed class IncidentConfiguration : IEntityTypeConfiguration<Incident>
         builder.Property(i => i.ResolutionSummary).HasMaxLength(Incident.MaxDescriptionLength);
         builder.Property(i => i.ClosureReason).HasMaxLength(Incident.MaxReasonLength);
         builder.Property(i => i.Version).IsConcurrencyToken();
-        // Guards the geocoding hand-off: a worker cannot overwrite a re-queue that happened mid-flight.
-        builder.Property(i => i.GeocodingStatus).IsConcurrencyToken();
+        // Guards the geocoding hand-off without making routine geocoder writes conflict with coordinators.
+        builder.Property(i => i.GeocodingGeneration).IsConcurrencyToken();
 
         // Owned Location value object (stored in-row, no separate table)
         builder.OwnsOne(i => i.Location, loc =>

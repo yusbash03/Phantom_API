@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using PHANTOM.Domain.Assignments;
 using PHANTOM.Domain.Audit;
 using PHANTOM.Domain.Correlation;
 using PHANTOM.Domain.Identity;
@@ -20,6 +21,8 @@ public interface IPhantomDbContext
     DbSet<IncidentAnalysis> IncidentAnalyses { get; }
     DbSet<IncidentRelation> IncidentRelations { get; }
     DbSet<Responder> Responders { get; }
+    DbSet<ResponderAssignment> ResponderAssignments { get; }
+    DbSet<IncidentUpdate> IncidentUpdates { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

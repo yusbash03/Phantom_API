@@ -155,6 +155,26 @@ public sealed partial class Responder
         return Result.Success();
     }
 
+    /// <summary>System consequence of a new active assignment. Does not change <see cref="Version"/>.</summary>
+    public void MarkAssigned(DateTimeOffset now)
+    {
+        if (Availability != ResponderAvailability.Assigned)
+        {
+            Availability = ResponderAvailability.Assigned;
+            LastStatusAt = now;
+        }
+    }
+
+    /// <summary>System consequence of the last active assignment ending: back to Available if still active.</summary>
+    public void ReleaseFromAssignment(DateTimeOffset now)
+    {
+        if (Availability == ResponderAvailability.Assigned)
+        {
+            Availability = IsActive ? ResponderAvailability.Available : ResponderAvailability.Unavailable;
+            LastStatusAt = now;
+        }
+    }
+
     public static string? NormaliseCallSign(string? callSign)
     {
         var value = callSign?.Trim().ToUpperInvariant();

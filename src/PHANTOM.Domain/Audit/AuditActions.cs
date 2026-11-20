@@ -32,6 +32,10 @@ public static class AuditActions
     public const string ResponderActivated = "responder.activated";
     public const string ResponderAvailabilityChanged = "responder.availability_changed";
 
+    public const string AssignmentCreated = "assignment.created";
+    public const string AssignmentStatusChanged = "assignment.status_changed";
+    public const string AssignmentUpdatePosted = "assignment.update_posted";
+
     public const string RelationSuggested = "relation.suggested";
     public const string RelationLinked = "relation.linked";
     public const string RelationDecided = "relation.decided";
