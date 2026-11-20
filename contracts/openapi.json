@@ -1140,6 +1140,60 @@
         }
       }
     },
+    "/api/v1/dashboard/summary": {
+      "get": {
+        "tags": [
+          "Dashboard"
+        ],
+        "summary": "Headline counts: total, active, high priority, awaiting review, unassigned, unacknowledged, available responders (12.1).",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardSummary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/dashboard/activity": {
+      "get": {
+        "tags": [
+          "Dashboard"
+        ],
+        "summary": "The most recent incident activity from the audit log, newest first (12.3).",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ActivityEvent"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/incidents": {
       "get": {
         "tags": [
@@ -3586,6 +3640,58 @@
   },
   "components": {
     "schemas": {
+      "ActivityEvent": {
+        "required": [
+          "id",
+          "occurredAt",
+          "kind",
+          "actorType",
+          "actor",
+          "action",
+          "summary",
+          "isAi",
+          "incident"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/TimelineEventKind"
+          },
+          "actorType": {
+            "$ref": "#/components/schemas/AuditActorType"
+          },
+          "actor": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UserRef"
+              }
+            ]
+          },
+          "action": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "isAi": {
+            "type": "boolean"
+          },
+          "incident": {
+            "$ref": "#/components/schemas/IncidentLink"
+          }
+        },
+        "description": "A recent change to any incident, worded as on the incident timeline (Requirement 12.3)."
+      },
       "AnalysisFailureCode": {
         "enum": [
           "Timeout",
@@ -4366,6 +4472,54 @@
           }
         }
       },
+      "DashboardSummary": {
+        "required": [
+          "totalIncidents",
+          "activeIncidents",
+          "highPriorityActiveIncidents",
+          "awaitingReview",
+          "unassignedVerified",
+          "assignmentsAwaitingAcknowledgement",
+          "availableResponders",
+          "generatedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "totalIncidents": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "activeIncidents": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "highPriorityActiveIncidents": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "awaitingReview": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "unassignedVerified": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "assignmentsAwaitingAcknowledgement": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "availableResponders": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "generatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "description": "The command dashboard's headline numbers (Requirement 12.1). Every value is counted from the database\nwhen requested (12.2); nothing is cached or stored."
+      },
       "EditIncidentRequest": {
         "required": [
           "title",
@@ -4697,6 +4851,26 @@
             "items": {
               "$ref": "#/components/schemas/IncidentReportResponse"
             }
+          }
+        }
+      },
+      "IncidentLink": {
+        "required": [
+          "id",
+          "number",
+          "title"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "number": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
           }
         }
       },
@@ -6377,6 +6551,9 @@
     },
     {
       "name": "Auth"
+    },
+    {
+      "name": "Dashboard"
     },
     {
       "name": "Incidents"

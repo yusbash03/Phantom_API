@@ -151,8 +151,11 @@ Do not start a Phase 3 feature while the previous one has unresolved critical fa
   - `GET /incidents/{id}/timeline` (staff) merges audit entries for the incident, its reports, analyses, assignments and relations with responder updates. Each entry gets a plain-language summary and detail; AI entries are flagged and drawn dashed with an "AI" badge, and automatic status changes say why. Ordering is by time, then by audit id. To make the order read cause → effect, assignment transitions are now audited before their consequences.
   - `GET /audit` and `/audit/facets` (Administrator) filter by actor, entity type/id, action and date range, with before/after JSON shown on expand. There are no write endpoints; the append-only enforcement from task 3 is unchanged.
   - _Requirements: 15.1–15.6_
-- [ ] 27. Dashboard metrics [API + UI]
+- [x] 27. Dashboard metrics [API + UI]
   - Metrics from DB; recent activity; mini map; test metrics against seeded fixtures
+  - Verified 2026-11-20: 144 unit tests and 122 integration tests (3 new, stable over 3 runs). The integration tests check every metric against a direct database count, before and after a known set of fixtures (reported, verified Critical, rejected, then assigned), with exact deltas. They also check that activity is newest first, names its incident, excludes user administration and is capped at 50, and that only staff can access the dashboard. 81 Vitest (4 new) and 34 Playwright tests (2 new: counts rise after a public report, which then appears in recent activity and links to the incident; the map renders) pass.
+  - `GET /dashboard/summary` returns the seven counts from Requirement 12.1 in three queries at request time, with `generatedAt`. "Verified, unassigned" means status Verified, because the first assignment moves an incident to Assigned and ending every assignment moves it back. `GET /dashboard/activity` reuses the timeline wording, so AI entries stay flagged.
+  - UI: staff now land on `/dashboard`. Tiles link to matching lists where an exact filter exists and are highlighted when they need attention. Recent activity and the lazy-loaded Mapbox mini map of open incidents (with a "without coordinates" note) are shown. The page refreshes every 30 s until SignalR (task 29). An error state is shown instead of placeholder numbers.
   - _Requirements: 12.1–12.3_
 - [ ] 28. P0 checkpoint: Playwright e2e of the demonstration scenario (design.md §12) passes against real API + PostgreSQL
 

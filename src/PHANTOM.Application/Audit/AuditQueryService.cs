@@ -67,11 +67,26 @@ public sealed record AuditEntryResponse(
 
 public sealed record AuditFacets(IReadOnlyList<string> Actions, IReadOnlyList<string> EntityTypes);
 
+public sealed record IncidentLink(Guid Id, string Number, string Title);
+
+/// <summary>A recent change to any incident, worded as on the incident timeline (Requirement 12.3).</summary>
+public sealed record ActivityEvent(
+    string Id,
+    DateTimeOffset OccurredAt,
+    TimelineEventKind Kind,
+    AuditActorType ActorType,
+    UserRef? Actor,
+    string Action,
+    string Summary,
+    bool IsAi,
+    IncidentLink Incident);
+
 public interface IAuditQueryService
 {
     Task<Result<IReadOnlyList<TimelineEvent>>> TimelineAsync(Guid incidentId, CancellationToken cancellationToken);
     Task<Result<PagedResult<AuditEntryResponse>>> SearchAsync(AuditSearchQuery query, CancellationToken cancellationToken);
     Task<AuditFacets> FacetsAsync(CancellationToken cancellationToken);
+    Task<IReadOnlyList<ActivityEvent>> RecentActivityAsync(int limit, CancellationToken cancellationToken);
 }
 
 internal sealed class AuditSearchQueryValidator : AbstractValidator<AuditSearchQuery>
@@ -98,6 +113,12 @@ internal sealed class AuditQueryService(IPhantomDbContext db, IValidator<AuditSe
 
     /// <summary>Recorded for completeness but shown via the update itself, so not repeated on the timeline.</summary>
     private static readonly HashSet<string> HiddenFromTimeline = [AuditActions.AssignmentUpdatePosted];
+
+    /// <summary>Audit entity types that belong to an incident's story; user and responder admin is not activity.</summary>
+    private static readonly string[] IncidentEntityTypes =
+        [nameof(Incident), nameof(IncidentReport), nameof(IncidentAnalysis), nameof(ResponderAssignment), nameof(IncidentRelation)];
+
+    public const int MaxActivity = 50;
 
     public async Task<Result<IReadOnlyList<TimelineEvent>>> TimelineAsync(Guid incidentId, CancellationToken cancellationToken)
     {
@@ -159,6 +180,90 @@ internal sealed class AuditQueryService(IPhantomDbContext db, IValidator<AuditSe
             .Select(x => x.Event)
             .ToList();
         return events;
+    }
+
+    public async Task<IReadOnlyList<ActivityEvent>> RecentActivityAsync(int limit, CancellationToken cancellationToken)
+    {
+        var hidden = HiddenFromTimeline.ToArray();
+        var entries = await db.AuditLogs.AsNoTracking()
+            .Where(a => a.EntityId != null && IncidentEntityTypes.Contains(a.EntityType) && !hidden.Contains(a.Action))
+            .OrderByDescending(a => a.OccurredAt).ThenByDescending(a => a.Id)
+            .Take(Math.Clamp(limit, 1, MaxActivity))
+            .ToListAsync(cancellationToken);
+
+        List<Guid> Ids(string type) => entries.Where(e => e.EntityType == type)
+            .Select(e => Guid.TryParse(e.EntityId, out var id) ? id : Guid.Empty).Where(id => id != Guid.Empty).Distinct().ToList();
+        var reportIds = Ids(nameof(IncidentReport));
+        var analysisIds = Ids(nameof(IncidentAnalysis));
+        var assignmentIds = Ids(nameof(ResponderAssignment));
+        var relationIds = Ids(nameof(IncidentRelation));
+
+        var reports = await db.IncidentReports.AsNoTracking().Where(r => reportIds.Contains(r.Id))
+            .Select(r => new { r.Id, r.IncidentId, r.Reference }).ToListAsync(cancellationToken);
+        var analyses = await db.IncidentAnalyses.AsNoTracking().Where(a => analysisIds.Contains(a.Id))
+            .Select(a => new { a.Id, a.IncidentId }).ToListAsync(cancellationToken);
+        var assignments = await db.ResponderAssignments.AsNoTracking().Where(a => assignmentIds.Contains(a.Id))
+            .Join(db.Responders, a => a.ResponderId, r => r.Id, (a, r) => new { a.Id, a.IncidentId, r.CallSign }).ToListAsync(cancellationToken);
+        var relations = await db.IncidentRelations.AsNoTracking().Where(r => relationIds.Contains(r.Id))
+            .Select(r => new { r.Id, r.SourceIncidentId, r.TargetIncidentId }).ToListAsync(cancellationToken);
+
+        // Which incident each entry is about. A relation is shown on its source incident and names the other.
+        var subject = new Dictionary<string, Guid>();
+        foreach (var e in entries.Where(e => e.EntityType == nameof(Incident)))
+        {
+            if (Guid.TryParse(e.EntityId, out var id))
+            {
+                subject[e.EntityId!] = id;
+            }
+        }
+
+        foreach (var r in reports)
+        {
+            subject[r.Id.ToString()] = r.IncidentId;
+        }
+
+        foreach (var a in analyses)
+        {
+            subject[a.Id.ToString()] = a.IncidentId;
+        }
+
+        foreach (var a in assignments)
+        {
+            subject[a.Id.ToString()] = a.IncidentId;
+        }
+
+        foreach (var r in relations)
+        {
+            subject[r.Id.ToString()] = r.SourceIncidentId;
+        }
+
+        var incidentIds = subject.Values.Concat(relations.Select(r => r.TargetIncidentId)).Distinct().ToList();
+        var incidents = await db.Incidents.AsNoTracking().Where(i => incidentIds.Contains(i.Id))
+            .ToDictionaryAsync(i => i.Id, i => new IncidentLink(i.Id, i.Number, i.Title), cancellationToken);
+
+        var context = new TimelineContext(
+            reports.ToDictionary(r => r.Id.ToString(), r => r.Reference),
+            assignments.ToDictionary(a => a.Id.ToString(), a => a.CallSign),
+            relations.ToDictionary(r => r.Id.ToString(), r => incidents.TryGetValue(r.TargetIncidentId, out var other) ? other.Number : "another incident"));
+
+        var userIds = entries.Select(e => e.ActorUserId).OfType<Guid>().Distinct().ToList();
+        var users = await db.Users.AsNoTracking().Where(u => userIds.Contains(u.Id))
+            .ToDictionaryAsync(u => u.Id, u => new UserRef(u.Id, u.DisplayName), cancellationToken);
+
+        var activity = new List<ActivityEvent>(entries.Count);
+        foreach (var e in entries)
+        {
+            if (!subject.TryGetValue(e.EntityId!, out var incidentId) || !incidents.TryGetValue(incidentId, out var incident))
+            {
+                continue;
+            }
+
+            var (kind, summary, _, isAi) = Describe(e, context);
+            var actor = e.ActorUserId is { } userId && users.TryGetValue(userId, out var user) ? user : null;
+            activity.Add(new ActivityEvent($"audit:{e.Id}", e.OccurredAt, kind, e.ActorType, actor, e.Action, summary, isAi, incident));
+        }
+
+        return activity;
     }
 
     public async Task<Result<PagedResult<AuditEntryResponse>>> SearchAsync(AuditSearchQuery query, CancellationToken cancellationToken)

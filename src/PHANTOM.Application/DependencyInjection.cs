@@ -5,6 +5,7 @@ using PHANTOM.Application.Assignments;
 using PHANTOM.Application.Audit;
 using PHANTOM.Application.Auth;
 using PHANTOM.Application.Correlation;
+using PHANTOM.Application.Dashboard;
 using PHANTOM.Application.Geocoding;
 using PHANTOM.Application.Incidents;
 using PHANTOM.Application.Intelligence;
@@ -43,6 +44,7 @@ public static class DependencyInjection
         services.AddScoped<IAssignmentService, AssignmentService>();
         services.AddScoped<INotifier, Notifier>();
         services.AddScoped<INotificationService, NotificationService>();
+        services.AddScoped<IDashboardService, DashboardService>();
         return services;
     }
 }
