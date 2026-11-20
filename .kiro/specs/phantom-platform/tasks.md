@@ -146,7 +146,10 @@ Do not start a Phase 3 feature while the previous one has unresolved critical fa
   - Notifications are written in the same transaction as the event that causes them: assigned/cancelled to the responder's linked account; Critical AI recommendation, possible duplicate, decline and completion to every active coordinator. They contain incident numbers and titles only, never reporter contact details.
   - The UI has a top-bar bell with the unread count in its accessible name, a recent list, mark read / mark all read, and a full Notifications page. It polls every 30 s; SignalR push is task 29. A double full stop in decline/completion messages was found by e2e and fixed.
   - _Requirements: 14.1–14.3_
-- [ ] 26. Incident history timeline and audit search [API + UI]
+- [x] 26. Incident history timeline and audit search [API + UI]
+  - Verified 2026-11-20: 144 unit tests and 119 integration tests (5 new, stable over 3 runs). The new tests cover full-lifecycle timeline order, duplicate timelines (reports kept), staff-only timeline access, audit search filters, and audit routes that are GET-only. 77 Vitest (5 new) and 32 Playwright tests (2 new: the History lists report, AI-labelled analysis and verify decision; an admin finds the decision in the audit log by entity and action) pass.
+  - `GET /incidents/{id}/timeline` (staff) merges audit entries for the incident, its reports, analyses, assignments and relations with responder updates. Each entry gets a plain-language summary and detail; AI entries are flagged and drawn dashed with an "AI" badge, and automatic status changes say why. Ordering is by time, then by audit id. To make the order read cause → effect, assignment transitions are now audited before their consequences.
+  - `GET /audit` and `/audit/facets` (Administrator) filter by actor, entity type/id, action and date range, with before/after JSON shown on expand. There are no write endpoints; the append-only enforcement from task 3 is unchanged.
   - _Requirements: 15.1–15.6_
 - [ ] 27. Dashboard metrics [API + UI]
   - Metrics from DB; recent activity; mini map; test metrics against seeded fixtures
