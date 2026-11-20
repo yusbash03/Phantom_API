@@ -90,7 +90,7 @@ internal sealed class AnalysisService(
                     recommendedCategory = result.Category.ToString(),
                     provider = outcome.Provider,
                     model = outcome.Model,
-                    simulated = outcome.Provider == IntelligenceProviders.Simulated,
+                    simulated = IntelligenceProviders.IsStandIn(outcome.Provider),
                     latencyMs,
                 });
             // Requirement 14.1: a newly Critical recommendation alerts coordinators (once, not on every retry).
@@ -268,7 +268,7 @@ internal sealed class AnalysisService(
             result = parsed.IsSuccess ? parsed.Value : null;
         }
 
-        return new AnalysisResponse(a.Id, a.Attempt, reportReference, a.Status, a.Provider, a.Model, a.Provider == IntelligenceProviders.Simulated, a.SchemaVersion,
+        return new AnalysisResponse(a.Id, a.Attempt, reportReference, a.Status, a.Provider, a.Model, IntelligenceProviders.IsStandIn(a.Provider), a.SchemaVersion,
             a.RequestedAt, a.CompletedAt, a.LatencyMs, a.RecommendedSeverity, a.RecommendedCategory, result, a.FailureCode, a.FailureMessage, requestedBy);
     }
 }

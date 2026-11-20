@@ -5,6 +5,9 @@ public sealed class AiOptions
     public const string SectionName = "Ai";
     public const string GeminiProvider = "Gemini";
 
+    /// <summary>Replays a recorded Gemini response; Development and Testing environments only (design §12).</summary>
+    public const string RecordedFixtureProvider = "RecordedFixture";
+
     public string Provider { get; set; } = GeminiProvider;
 
     /// <summary>Secret. From <c>Ai__ApiKey</c> or user-secrets, never from source.</summary>

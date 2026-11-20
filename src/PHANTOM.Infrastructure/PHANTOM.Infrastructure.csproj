@@ -17,6 +17,9 @@
     <ProjectReference Include="..\PHANTOM.Domain\PHANTOM.Domain.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <EmbeddedResource Include="Intelligence\Fixtures\*.json" LogicalName="PHANTOM.Fixtures.%(Filename)%(Extension)" />
+  </ItemGroup>
+  <ItemGroup>
     <InternalsVisibleTo Include="PHANTOM.UnitTests" />
     <InternalsVisibleTo Include="PHANTOM.IntegrationTests" />
   </ItemGroup>

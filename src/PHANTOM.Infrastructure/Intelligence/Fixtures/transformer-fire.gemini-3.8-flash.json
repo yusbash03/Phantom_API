@@ -1,0 +1,56 @@
+{
+  "_about": "A real gemini-3.8-flash response to the report below, recorded from the development database on 2026-11-20 (incident PH-2026-000091). Replayed by RecordedFixtureIntelligenceService in test environments only; never registered in Production.",
+  "recordedAt": "2026-11-20T05:07:59.964601+00:00",
+  "provider": "Gemini",
+  "model": "gemini-3.8-flash",
+  "schemaVersion": "phantom.intel.v1",
+  "latencyMs": 13305,
+  "request": {
+    "title": "Transformer fire",
+    "description": "Sparks and smoke from the pole transformer on the corner.",
+    "category": "Fire",
+    "locationText": "Corner of Allen Avenue and Opebi Road"
+  },
+  "result": {
+    "category": "Fire",
+    "summary": "A member of the public reported sparks and smoke coming from a pole-mounted transformer at an intersection. No injuries, structural spread, or trapped individuals were mentioned.",
+    "severity": "Medium",
+    "severityRationale": "The report indicates an active electrical hazard with smoke and sparks, presenting a potential fire and electrocution risk, though there is no immediate indication of casualties or spreading structural damage.",
+    "namedLocations": [
+      "Corner of Allen Avenue and Opebi Road"
+    ],
+    "potentialCasualties": "NotIndicated",
+    "possibleTrappedPersons": "NotIndicated",
+    "hazards": [
+      "electrical fire risk",
+      "sparks and smoke",
+      "potential live electrical wires"
+    ],
+    "missingInformation": [
+      "Whether active flames are visible",
+      "Current proximity of pedestrians, traffic, or structures",
+      "Whether electric utility providers have been notified",
+      "Reporter contact information for updates"
+    ],
+    "recommendedNextActions": [
+      "Notify the relevant electrical utility provider regarding the sparking transformer",
+      "Notify local fire services of the reported transformer fire risk",
+      "Seek updates on whether pedestrian or vehicular traffic needs to be diverted from the intersection"
+    ],
+    "extractedEntities": [
+      {
+        "type": "Landmark",
+        "value": "Corner of Allen Avenue and Opebi Road"
+      },
+      {
+        "type": "Hazard",
+        "value": "pole transformer"
+      },
+      {
+        "type": "Hazard",
+        "value": "Sparks and smoke"
+      }
+    ],
+    "confidenceExplanation": "Direct observation reported with a clear street intersection, though the description is brief and lacks details on severity of damage or containment."
+  }
+}

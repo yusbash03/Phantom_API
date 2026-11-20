@@ -72,7 +72,8 @@ public static class DependencyInjection
     {
         services.AddOptions<AiOptions>()
             .Bind(configuration.GetSection(AiOptions.SectionName))
-            .Validate(o => o.Provider == AiOptions.GeminiProvider, $"Ai:Provider must be '{AiOptions.GeminiProvider}'.")
+            .Validate(o => o.Provider is AiOptions.GeminiProvider or AiOptions.RecordedFixtureProvider,
+                $"Ai:Provider must be '{AiOptions.GeminiProvider}' or '{AiOptions.RecordedFixtureProvider}'.")
             .Validate(o => !string.IsNullOrWhiteSpace(o.Model), "Ai:Model is required.")
             .Validate(o => o.TimeoutSeconds is >= 1 and <= 120, "Ai:TimeoutSeconds must be 1-120.")
             .Validate(o => o.MaxRetries is >= 0 and <= 5, "Ai:MaxRetries must be 0-5.")
@@ -81,7 +82,18 @@ public static class DependencyInjection
             .ValidateOnStart();
 
         var ai = configuration.GetSection(AiOptions.SectionName).Get<AiOptions>() ?? new AiOptions();
-        if (ai.HasApiKey)
+        if (ai.Provider == AiOptions.RecordedFixtureProvider)
+        {
+            // A replayed recording must never stand in for real analysis where real incidents are handled.
+            if (!environment.IsDevelopment() && !environment.IsEnvironment("Testing"))
+            {
+                throw new InvalidOperationException(
+                    $"Ai:Provider '{AiOptions.RecordedFixtureProvider}' is for test environments only, not '{environment.EnvironmentName}'.");
+            }
+
+            services.AddSingleton<IIncidentIntelligenceService, RecordedFixtureIntelligenceService>();
+        }
+        else if (ai.HasApiKey)
         {
             services.AddHttpClient<IIncidentIntelligenceService, GeminiIntelligenceService>((sp, http) =>
             {

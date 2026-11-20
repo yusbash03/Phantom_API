@@ -27,6 +27,15 @@ public static class IntelligenceProviders
 {
     /// <summary>Provider name used by the development-only simulated service; always labelled as such.</summary>
     public const string Simulated = "Simulated";
+
+    /// <summary>
+    /// A recorded real model response replayed in test environments (design §12). It is not an analysis of
+    /// the report it is attached to, so it is labelled like simulated output.
+    /// </summary>
+    public const string RecordedFixture = "RecordedFixture";
+
+    /// <summary>True when the output did not come from a live model looking at this report.</summary>
+    public static bool IsStandIn(string? provider) => provider is Simulated or RecordedFixture;
 }
 
 public sealed record IntelligenceOutcome
