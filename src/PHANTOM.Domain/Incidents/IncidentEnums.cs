@@ -47,3 +47,14 @@ public enum LocationPrecision
     Street,
     Exact,
 }
+
+public enum GeocodingStatus
+{
+    /// <summary>Coordinates were reported or verified; nothing to look up.</summary>
+    NotRequired,
+    Pending,
+    Processing,
+    Succeeded,
+    NoResult,
+    Failed,
+}

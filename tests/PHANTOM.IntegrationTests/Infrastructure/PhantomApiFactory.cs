@@ -7,6 +7,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using PHANTOM.Application.Abstractions;
+using PHANTOM.Application.Geocoding;
 using PHANTOM.Application.Intelligence;
 using PHANTOM.Domain.Identity;
 using PHANTOM.Infrastructure.Persistence;
@@ -25,6 +26,8 @@ public sealed class PhantomApiFactory : WebApplicationFactory<Program>, IAsyncLi
 
     /// <summary>Isolated object-storage directory so tests can assert exactly which files were written.</summary>
     public ScriptedIntelligenceService Intelligence { get; } = new();
+
+    public ScriptedGeocodingService Geocoding { get; } = new();
 
     public string StoragePath { get; } = Path.Combine(Path.GetTempPath(), $"phantom-it-{Guid.NewGuid():N}");
 
@@ -57,11 +60,14 @@ public sealed class PhantomApiFactory : WebApplicationFactory<Program>, IAsyncLi
             ["RateLimiting:PublicPermitsPerMinute"] = "10000",
             ["Storage:Local:BasePath"] = StoragePath,
             ["Ai:PollIntervalSeconds"] = "1",
+            ["Mapbox:PollIntervalSeconds"] = "1",
         }));
         builder.ConfigureTestServices(services =>
         {
             services.RemoveAll<IIncidentIntelligenceService>();
             services.AddSingleton<IIncidentIntelligenceService>(Intelligence);
+            services.RemoveAll<IGeocodingService>();
+            services.AddSingleton<IGeocodingService>(Geocoding);
         });
     }
 

@@ -53,3 +53,14 @@ internal sealed class IncidentListQueryValidator : AbstractValidator<IncidentLis
         RuleFor(q => q.Severity).IsInEnum();
     }
 }
+
+internal sealed class VerifyLocationRequestValidator : AbstractValidator<VerifyLocationRequest>
+{
+    public VerifyLocationRequestValidator()
+    {
+        RuleFor(r => r.Text).NotEmpty().WithMessage("A location description is required.")
+            .MaximumLength(Location.MaxTextLength).WithMessage($"Location description must be at most {Location.MaxTextLength} characters.");
+        RuleFor(r => r.Latitude).NotNull().WithMessage("Latitude is required.").InclusiveBetween(-90m, 90m).WithMessage("Latitude must be between -90 and 90.");
+        RuleFor(r => r.Longitude).NotNull().WithMessage("Longitude is required.").InclusiveBetween(-180m, 180m).WithMessage("Longitude must be between -180 and 180.");
+    }
+}

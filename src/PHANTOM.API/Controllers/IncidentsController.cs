@@ -111,4 +111,14 @@ public sealed class IncidentsController(IIncidentService incidents) : Controller
     public async Task<ActionResult<IncidentDetailResponse>> ChangeSeverity(Guid id, [FromBody] ChangeSeverityRequest request, CancellationToken cancellationToken) =>
         this.ToActionResult(await incidents.ChangeSeverityAsync(id, request, cancellationToken));
 
+    /// <summary>Confirms or corrects the location. This is the only way a location becomes verified.</summary>
+    [HttpPut("{id:guid}/location")]
+    [Authorize(Policy = Policies.Coordinator)]
+    [ProducesResponseType<IncidentDetailResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status422UnprocessableEntity)]
+    public async Task<ActionResult<IncidentDetailResponse>> VerifyLocation(Guid id, [FromBody] VerifyLocationRequest request, CancellationToken cancellationToken) =>
+        this.ToActionResult(await incidents.VerifyLocationAsync(id, request, cancellationToken));
 }

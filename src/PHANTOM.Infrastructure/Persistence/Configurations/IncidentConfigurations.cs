@@ -17,6 +17,8 @@ internal sealed class IncidentConfiguration : IEntityTypeConfiguration<Incident>
         builder.Property(i => i.ResolutionSummary).HasMaxLength(Incident.MaxDescriptionLength);
         builder.Property(i => i.ClosureReason).HasMaxLength(Incident.MaxReasonLength);
         builder.Property(i => i.Version).IsConcurrencyToken();
+        // Guards the geocoding hand-off: a worker cannot overwrite a re-queue that happened mid-flight.
+        builder.Property(i => i.GeocodingStatus).IsConcurrencyToken();
 
         // Owned Location value object (stored in-row, no separate table)
         builder.OwnsOne(i => i.Location, loc =>
@@ -28,12 +30,15 @@ internal sealed class IncidentConfiguration : IEntityTypeConfiguration<Incident>
             loc.Property(l => l.Precision).HasColumnName("location_precision").HasMaxLength(40).IsRequired();
             loc.Property(l => l.VerifiedById).HasColumnName("location_verified_by_id");
             loc.Property(l => l.VerifiedAt).HasColumnName("location_verified_at");
+            loc.Property(l => l.GeocoderPlaceName).HasColumnName("location_geocoder_place_name").HasMaxLength(Location.MaxTextLength);
         });
 
         builder.HasIndex(i => new { i.Status, i.CreatedAt });
         builder.HasIndex(i => i.Category);
         builder.HasIndex(i => i.ApprovedSeverity);
         builder.HasIndex(i => i.CreatedAt);
+        // Geocoding worker queue.
+        builder.HasIndex(i => new { i.GeocodingStatus, i.CreatedAt });
     }
 }
 

@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using PHANTOM.Application.Abstractions;
 using PHANTOM.Application.Audit;
 using PHANTOM.Application.Correlation;
+using PHANTOM.Application.Geocoding;
 using PHANTOM.Application.Incidents;
 using PHANTOM.Domain.Audit;
 using PHANTOM.Domain.Common;
@@ -27,6 +28,7 @@ internal sealed class AnalysisService(
     IIncidentIntelligenceService intelligence,
     IAnalysisSignal signal,
     ICorrelationService correlation,
+    IGeocodingSignal geocodingSignal,
     IAuditWriter audit,
     ICurrentUser currentUser,
     IClock clock,
@@ -89,6 +91,11 @@ internal sealed class AnalysisService(
                     latencyMs,
                 });
             await SaveWithRecommendationAsync(analysis.IncidentId, result, now, cancellationToken);
+
+            if (result.NamedLocations.Count > 0)
+            {
+                await RequeueGeocodingAsync(analysis.IncidentId, cancellationToken);
+            }
 
             // AI-extracted place names are a correlation signal, so compare again (Requirement 7.1).
             try
@@ -187,6 +194,39 @@ internal sealed class AnalysisService(
         var reference = await db.IncidentReports.Where(r => r.Id == retry.ReportId).Select(r => r.Reference).FirstAsync(cancellationToken);
         var requester = await db.Users.Where(u => u.Id == userId).Select(u => new UserRef(u.Id, u.DisplayName)).FirstOrDefaultAsync(cancellationToken);
         return ToResponse(retry, reference, requester);
+    }
+
+    /// <summary>
+    /// When the location text could not be geocoded, the AI-extracted place names give it another chance
+    /// (design §5). Best effort: a conflicting human change simply wins.
+    /// </summary>
+    private async Task RequeueGeocodingAsync(Guid incidentId, CancellationToken cancellationToken)
+    {
+        for (var attempt = 1; attempt <= MaxConcurrencyRetries; attempt++)
+        {
+            var incident = await db.Incidents.FirstOrDefaultAsync(i => i.Id == incidentId, cancellationToken);
+            if (incident is null || !incident.RequestGeocodingRetry())
+            {
+                return;
+            }
+
+            try
+            {
+                await db.SaveChangesAsync(cancellationToken);
+                geocodingSignal.Notify();
+                return;
+            }
+            catch (DbUpdateConcurrencyException ex)
+            {
+                // The geocoder (or a person) changed the incident meanwhile; reload and decide again.
+                foreach (var entry in ex.Entries)
+                {
+                    await entry.ReloadAsync(cancellationToken);
+                }
+            }
+        }
+
+        logger.LogWarning("Could not re-queue geocoding for incident {IncidentId} after {Attempts} attempts", incidentId, MaxConcurrencyRetries);
     }
 
     /// <summary>

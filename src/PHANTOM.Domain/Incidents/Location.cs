@@ -18,7 +18,8 @@ public sealed record Location
         LocationProvenance provenance,
         LocationPrecision precision,
         Guid? verifiedById,
-        DateTimeOffset? verifiedAt)
+        DateTimeOffset? verifiedAt,
+        string? geocoderPlaceName = null)
     {
         Text = text;
         Latitude = latitude;
@@ -27,6 +28,7 @@ public sealed record Location
         Precision = precision;
         VerifiedById = verifiedById;
         VerifiedAt = verifiedAt;
+        GeocoderPlaceName = geocoderPlaceName;
     }
 
     public string Text { get; }
@@ -36,6 +38,9 @@ public sealed record Location
     public LocationPrecision Precision { get; }
     public Guid? VerifiedById { get; }
     public DateTimeOffset? VerifiedAt { get; }
+
+    /// <summary>What the geocoder matched (e.g. "Allen Avenue, Ikeja, Lagos"), shown so staff can judge the match.</summary>
+    public string? GeocoderPlaceName { get; }
 
     public bool HasCoordinates => Latitude.HasValue && Longitude.HasValue;
     public bool IsVerified => Provenance == LocationProvenance.ManuallyVerified;
@@ -54,7 +59,7 @@ public sealed record Location
     }
 
     /// <summary>Coordinates from a geocoder. Never verified.</summary>
-    public Result<Location> WithGeocodedCoordinates(decimal latitude, decimal longitude, LocationPrecision precision, bool fromAiExtractedPlace)
+    public Result<Location> WithGeocodedCoordinates(decimal latitude, decimal longitude, LocationPrecision precision, bool fromAiExtractedPlace, string? placeName = null)
     {
         var error = ValidateCoordinates(latitude, longitude);
         if (error is not null)
@@ -63,7 +68,9 @@ public sealed record Location
         }
 
         var provenance = fromAiExtractedPlace ? LocationProvenance.AiInferred : LocationProvenance.Geocoded;
-        return new Location(Text, Round(latitude), Round(longitude), provenance, precision, null, null);
+        var name = string.IsNullOrWhiteSpace(placeName) ? null : placeName.Trim();
+        return new Location(Text, Round(latitude), Round(longitude), provenance, precision, null, null,
+            name is { Length: > MaxTextLength } ? name[..MaxTextLength] : name);
     }
 
     /// <summary>The only way to produce a verified location: an identified human confirms or corrects it.</summary>

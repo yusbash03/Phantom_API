@@ -477,6 +477,17 @@ namespace PHANTOM.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(5000)")
                         .HasColumnName("description");
 
+                    b.Property<DateTimeOffset?>("GeocodingClaimedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("geocoding_claimed_at");
+
+                    b.Property<string>("GeocodingStatus")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("geocoding_status");
+
                     b.Property<bool>("IsDemoData")
                         .HasColumnType("boolean")
                         .HasColumnName("is_demo_data");
@@ -548,6 +559,9 @@ namespace PHANTOM.Infrastructure.Persistence.Migrations
                     b.HasIndex("Number")
                         .IsUnique()
                         .HasDatabaseName("ix_incidents_number");
+
+                    b.HasIndex("GeocodingStatus", "CreatedAt")
+                        .HasDatabaseName("ix_incidents_geocoding_status_created_at");
 
                     b.HasIndex("Status", "CreatedAt")
                         .HasDatabaseName("ix_incidents_status_created_at");
@@ -836,6 +850,11 @@ namespace PHANTOM.Infrastructure.Persistence.Migrations
                             b1.Property<Guid>("IncidentId")
                                 .HasColumnType("uuid")
                                 .HasColumnName("id");
+
+                            b1.Property<string>("GeocoderPlaceName")
+                                .HasMaxLength(500)
+                                .HasColumnType("character varying(500)")
+                                .HasColumnName("location_geocoder_place_name");
 
                             b1.Property<decimal?>("Latitude")
                                 .HasColumnType("numeric(9,6)")

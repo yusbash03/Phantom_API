@@ -18,6 +18,9 @@ public static class AuditActions
     public const string IncidentUpdated = "incident.updated";
     public const string IncidentStatusChanged = "incident.status_changed";
     public const string IncidentSeverityChanged = "incident.severity_changed";
+    public const string LocationGeocoded = "incident.location_geocoded";
+    public const string LocationGeocodingFailed = "incident.location_geocoding_failed";
+    public const string LocationVerified = "incident.location_verified";
     public const string AiAnalysisQueued = "ai_analysis.queued";
     public const string AiAnalysisCompleted = "ai_analysis.completed";
     public const string AiAnalysisFailed = "ai_analysis.failed";

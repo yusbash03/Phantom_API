@@ -47,7 +47,7 @@ public sealed class IncidentManagementTests(PhantomApiFactory factory)
     {
         var (client, coordinatorId) = await CoordinatorAsync();
         var incident = await SubmitAsync();
-        Assert.Equal(["Edit", "BeginReview", "Reject"], (await GetAsync(client, incident.Id)).AvailableActions);
+        Assert.Equal(["Edit", "BeginReview", "Reject", "VerifyLocation"], (await GetAsync(client, incident.Id)).AvailableActions);
 
         var reviewed = await PostAsync(client, incident, "review", new { });
         Assert.Equal("UnderReview", reviewed.Status);

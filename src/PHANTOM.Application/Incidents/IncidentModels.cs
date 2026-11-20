@@ -27,6 +27,7 @@ public enum IncidentAction
     Reopen,
     Close,
     ChangeSeverity,
+    VerifyLocation,
 }
 
 public sealed record IncidentListQuery(
@@ -69,7 +70,8 @@ public sealed record LocationResponse(
     LocationPrecision Precision,
     bool IsVerified,
     UserRef? VerifiedBy,
-    DateTimeOffset? VerifiedAt);
+    DateTimeOffset? VerifiedAt,
+    string? GeocoderPlaceName);
 
 public sealed record AttachmentResponse(Guid Id, AttachmentKind Kind, string ContentType, long SizeBytes, string OriginalFileName, DateTimeOffset CreatedAt);
 
@@ -102,6 +104,7 @@ public sealed record IncidentDetailResponse(
     Severity? AiRecommendedSeverity,
     LocationResponse Location,
     bool LocationNeedsVerification,
+    GeocodingStatus GeocodingStatus,
     UserRef? AssignedCoordinator,
     UserRef? VerifiedBy,
     DateTimeOffset? VerifiedAt,
@@ -132,3 +135,6 @@ public sealed record ResolveIncidentRequest(string ResolutionSummary, int Versio
 public sealed record ChangeSeverityRequest(Severity? Severity, int Version);
 
 public sealed record AttachmentContent(Stream Content, string ContentType, string FileName);
+
+/// <summary>A coordinator confirms or corrects the location; the result is the only verified kind (Requirement 8.5).</summary>
+public sealed record VerifyLocationRequest(string Text, decimal? Latitude, decimal? Longitude, int Version);

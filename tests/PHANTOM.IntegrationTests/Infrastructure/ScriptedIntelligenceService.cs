@@ -17,6 +17,7 @@ public sealed class ScriptedIntelligenceService : IIncidentIntelligenceService
     public const string FailOnce = "[ai:fail-once]";
     public const string Hold = "[ai:hold]";
     public const string Critical = "[ai:critical]";
+    public const string Place = "[ai:place]";
 
     private readonly ConcurrentDictionary<string, int> _calls = new();
     private readonly ConcurrentDictionary<string, TaskCompletionSource> _holds = new();
@@ -56,7 +57,8 @@ public sealed class ScriptedIntelligenceService : IIncidentIntelligenceService
 
         var severity = text.Contains(Critical, StringComparison.Ordinal) ? Severity.Critical : Severity.High;
         var result = new IntelligenceResultV1(
-            IncidentCategory.Infrastructure, "Scripted summary.", severity, "Scripted rationale.", [request.LocationText],
+            IncidentCategory.Infrastructure, "Scripted summary.", severity, "Scripted rationale.",
+            text.Contains(Place, StringComparison.Ordinal) ? [request.LocationText, ScriptedGeocodingService.KnownLandmark] : [request.LocationText],
             Indication.Unknown, Indication.NotIndicated, ["smoke"], ["Exact address"], ["Call the reporter."], [], "Scripted.");
         return IntelligenceOutcome.Success("Scripted", "scripted-1", JsonSerializer.Serialize(result, IntelligenceResultParser.JsonOptions));
     }

@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using PHANTOM.Application.Audit;
 using PHANTOM.Application.Auth;
 using PHANTOM.Application.Correlation;
+using PHANTOM.Application.Geocoding;
 using PHANTOM.Application.Incidents;
 using PHANTOM.Application.Intelligence;
 using PHANTOM.Application.Reporting.Intake;
@@ -33,6 +34,7 @@ public static class DependencyInjection
         services.AddScoped<IIncidentService, IncidentService>();
         services.AddScoped<IAnalysisService, AnalysisService>();
         services.AddScoped<ICorrelationService, CorrelationService>();
+        services.AddScoped<IGeocodingProcessor, GeocodingProcessor>();
         return services;
     }
 }

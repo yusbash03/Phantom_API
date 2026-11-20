@@ -9,7 +9,7 @@ Do not start a Phase 3 feature while the previous one has unresolved critical fa
 - [x] 0.1 Inspect workspace, both repositories, toolchain (.NET 10.0.400, Node 26.7.0, Docker 29.7.2, Kiro 1.4.215)
 - [x] 0.2 Draft requirements.md, design.md, tasks.md and steering documents
 - [x] 0.3 Approval of design decisions D1–D6 (design.md §16) — approved 2026-11-18; D3 = Render
-- [ ] 0.4 Prerequisites: ~~start Docker Desktop~~ (done); ~~database~~ (Neon PostgreSQL provided); ~~obtain Gemini API key~~ (configured in user-secrets 2026-11-19); **Mapbox account (secret + URL-restricted public token)** — `Mapbox:AccessToken` is present in user-secrets, but whether it is the secret or the URL-restricted public token still needs confirming before task 21
+- [ ] 0.4 Prerequisites: ~~start Docker Desktop~~ (done); ~~database~~ (Neon PostgreSQL provided); ~~obtain Gemini API key~~ (configured in user-secrets 2026-11-19); **Mapbox account (secret + URL-restricted public token)** — `Mapbox:AccessToken` (public `pk.` token) works for geocoding; see task 21 note
 
 ## Phase 2 — Foundation
 
@@ -112,7 +112,12 @@ Do not start a Phase 3 feature while the previous one has unresolved critical fa
   - Weights and thresholds come from configuration (`Correlation:*`, validated on start); the admin screen is task 34. Added `PrimaryIncidentId` on relations (not in the design) to record which incident stays open.
   - Pure `CorrelationScorer` with FsCheck properties (bounds, symmetry, monotonicity) and edge-case tests (missing coords, identical text, opposite categories, window boundaries); `CorrelationService`; confirm/unrelated/related decisions; possible-duplicates UI
   - _Requirements: 7.1–7.8_
-- [ ] 21. Geocoding [API]
+- [x] 21. Geocoding [API]
+  - Verified 2026-11-20: 120 unit tests, including the critical property 4 FsCheck property (no sequence of system operations yields a verified location) and Mapbox adapter tests against the recorded v6 shape. 91 integration tests (8 new) pass, stable over 3 runs. 45 Vitest and 16 Playwright tests pass.
+  - **Live Mapbox PASSED:** the opt-in test placed "Allen Avenue, Ikeja, Lagos" at Street precision, and a nonsense query gave no result. In the running app a report with no coordinates was geocoded to 6.603149, 3.351186 (Geocoded, Street, unverified, match shown), and the token appeared in no log line.
+  - Precision is conservative: geocoded points are never "Exact", and region/country matches count as no result. There is no simulated geocoder (8.4). AI-extracted place names are geocoded as `AiInferred` when the text fails. A race where an AI result arriving mid-geocode lost its place names was found and fixed (geocoding status is a concurrency token; re-queue supersedes in-flight attempts).
+  - Added `PUT /incidents/{id}/location` plus a small "Verify location" dialog, since the new action needed UI.
+  - `Mapbox:AccessToken` is a **public (`pk.`) token**; Mapbox accepts it for server-side geocoding. Decide in task 35 whether production uses a secret server token plus a separate URL-restricted public token for the map (task 22).
   - `MapboxGeocodingService`; worker step; failure → needs-verification flag; location verification endpoint; test that only manual verification sets `isVerified`
   - **Verify against live Mapbox** and record the result
   - _Requirements: 8.1–8.6_

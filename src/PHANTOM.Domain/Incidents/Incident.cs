@@ -33,6 +33,12 @@ public sealed class Incident
     public Severity? AiRecommendedSeverity { get; private set; }
     public Location Location { get; private set; }
     public bool LocationNeedsVerification { get; private set; }
+
+    /// <summary>Server-side geocoding state; DB-backed so the work survives restarts.</summary>
+    public GeocodingStatus GeocodingStatus { get; private set; }
+
+    /// <summary>When the geocoding worker claimed this incident; used to recover attempts stuck after a crash.</summary>
+    public DateTimeOffset? GeocodingClaimedAt { get; private set; }
     public Guid? AssignedCoordinatorId { get; private set; }
     public Guid? VerifiedById { get; private set; }
     public DateTimeOffset? VerifiedAt { get; private set; }
@@ -83,6 +89,7 @@ public sealed class Incident
             Status = IncidentStatus.Reported,
             Location = location,
             LocationNeedsVerification = !location.HasCoordinates,
+            GeocodingStatus = location.HasCoordinates ? GeocodingStatus.NotRequired : GeocodingStatus.Pending,
             IsDemoData = isDemoData,
             CreatedAt = now,
             UpdatedAt = now,
@@ -255,18 +262,71 @@ public sealed class Incident
         UpdatedAt = now;
     }
 
-    /// <summary>System-driven location update (e.g. geocoding); does not change <see cref="Version"/>.</summary>
-    public void UpdateLocation(Location location, DateTimeOffset now)
+    /// <summary>
+    /// Stores geocoder coordinates (system write, no version change). Never applies over reported or
+    /// verified coordinates, and never produces a verified location (Requirement 8.2, 8.4, 8.6).
+    /// </summary>
+    public bool ApplyGeocode(Location geocoded, DateTimeOffset now)
     {
-        Location = location ?? throw new ArgumentNullException(nameof(location));
-        LocationNeedsVerification = !location.IsVerified && !location.HasCoordinates;
+        ArgumentNullException.ThrowIfNull(geocoded);
+        if (geocoded.IsVerified || !geocoded.HasCoordinates || Location.HasCoordinates || Location.IsVerified)
+        {
+            return false;
+        }
+
+        Location = geocoded;
+        LocationNeedsVerification = false;
+        GeocodingStatus = GeocodingStatus.Succeeded;
+        GeocodingClaimedAt = null;
+        UpdatedAt = now;
+        return true;
+    }
+
+    /// <summary>Geocoding found nothing usable or failed: keep the text, no coordinates, flag for a person (8.3).</summary>
+    public void MarkGeocodingUnsuccessful(bool noResult, DateTimeOffset now)
+    {
+        GeocodingStatus = noResult ? GeocodingStatus.NoResult : GeocodingStatus.Failed;
+        GeocodingClaimedAt = null;
+        LocationNeedsVerification = !Location.HasCoordinates && !Location.IsVerified;
         UpdatedAt = now;
     }
 
-    public void FlagLocationForVerification(DateTimeOffset now)
+    /// <summary>
+    /// Queues another attempt, e.g. once AI-extracted place names are available. Also supersedes an
+    /// attempt already in flight, which may have started before those names existed.
+    /// </summary>
+    public bool RequestGeocodingRetry()
     {
-        LocationNeedsVerification = true;
-        UpdatedAt = now;
+        if (Location.HasCoordinates || Location.IsVerified
+            || GeocodingStatus is not (GeocodingStatus.NoResult or GeocodingStatus.Failed or GeocodingStatus.Processing))
+        {
+            return false;
+        }
+
+        GeocodingStatus = GeocodingStatus.Pending;
+        return true;
+    }
+
+    /// <summary>A coordinator confirms or corrects the location: the only way to a verified location (8.5, 8.6).</summary>
+    public Result VerifyLocation(string text, decimal latitude, decimal longitude, Guid coordinatorId, DateTimeOffset now)
+    {
+        if (IncidentStatusPolicy.IsTerminal(Status))
+        {
+            return Error.InvalidTransition("incident.terminal", "A closed or rejected incident cannot be changed.");
+        }
+
+        var verified = Location.ManuallyVerified(text, latitude, longitude, coordinatorId, now);
+        if (verified.IsFailure)
+        {
+            return verified.Error!;
+        }
+
+        Location = verified.Value;
+        LocationNeedsVerification = false;
+        GeocodingStatus = GeocodingStatus.NotRequired;
+        GeocodingClaimedAt = null;
+        Touch(now);
+        return Result.Success();
     }
 
     private Result Apply(IncidentTransition transition, DateTimeOffset now)

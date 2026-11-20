@@ -7,6 +7,7 @@ using PHANTOM.Application.Abstractions;
 using PHANTOM.Application.Audit;
 using PHANTOM.Application.Common;
 using PHANTOM.Application.Correlation;
+using PHANTOM.Application.Geocoding;
 using PHANTOM.Application.Intelligence;
 using PHANTOM.Domain.Audit;
 using PHANTOM.Domain.Common;
@@ -23,6 +24,7 @@ public sealed class ReportIntakeService(
     IIncidentNumberGenerator numberGenerator,
     IAuditWriter audit,
     IAnalysisSignal analysisSignal,
+    IGeocodingSignal geocodingSignal,
     ICorrelationService correlation,
     IClock clock,
     ILogger<ReportIntakeService> logger) : IReportIntakeService
@@ -148,6 +150,11 @@ public sealed class ReportIntakeService(
 
             storedKeys.Clear();
             analysisSignal.Notify();
+            if (incident.GeocodingStatus == GeocodingStatus.Pending)
+            {
+                geocodingSignal.Notify();
+            }
+
             await CorrelateBestEffortAsync(incident.Id, cancellationToken).ConfigureAwait(false);
             logger.LogInformation("Report {Reference} submitted: incident {IncidentId}, analysis {AnalysisId}, {AttachmentCount} attachments",
                 reference, incident.Id, analysis.Id, processedFiles.Count);

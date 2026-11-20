@@ -26,6 +26,7 @@ public interface IIncidentService
     Task<Result<IncidentDetailResponse>> ReopenAsync(Guid id, ReasonRequest request, CancellationToken cancellationToken);
     Task<Result<IncidentDetailResponse>> CloseAsync(Guid id, VersionedRequest request, CancellationToken cancellationToken);
     Task<Result<IncidentDetailResponse>> ChangeSeverityAsync(Guid id, ChangeSeverityRequest request, CancellationToken cancellationToken);
+    Task<Result<IncidentDetailResponse>> VerifyLocationAsync(Guid id, VerifyLocationRequest request, CancellationToken cancellationToken);
     Task<Result<AttachmentContent>> GetAttachmentContentAsync(Guid attachmentId, CancellationToken cancellationToken);
 }
 
@@ -195,8 +196,9 @@ internal sealed class IncidentService(
             incident.ApprovedSeverity,
             incident.AiRecommendedSeverity,
             new LocationResponse(location.Text, location.Latitude, location.Longitude, location.Provenance, location.Precision,
-                location.IsVerified, Ref(location.VerifiedById), location.VerifiedAt),
+                location.IsVerified, Ref(location.VerifiedById), location.VerifiedAt, location.GeocoderPlaceName),
             incident.LocationNeedsVerification,
+            incident.GeocodingStatus,
             Ref(incident.AssignedCoordinatorId),
             Ref(incident.VerifiedById),
             incident.VerifiedAt,
@@ -276,6 +278,21 @@ internal sealed class IncidentService(
             {
                 audit.Record(AuditActions.IncidentSeverityChanged, nameof(Incident), incident.Id.ToString(),
                     new { approvedSeverity = previous?.ToString() }, new { approvedSeverity = request.Severity?.ToString() });
+            }
+
+            return result;
+        });
+
+    public Task<Result<IncidentDetailResponse>> VerifyLocationAsync(Guid id, VerifyLocationRequest request, CancellationToken cancellationToken) =>
+        MutateAsync(id, request, request.Version, cancellationToken: cancellationToken, apply: (incident, actor, now) =>
+        {
+            var before = incident.Location;
+            var result = incident.VerifyLocation(request.Text, request.Latitude!.Value, request.Longitude!.Value, actor, now);
+            if (result.IsSuccess)
+            {
+                audit.Record(AuditActions.LocationVerified, nameof(Incident), incident.Id.ToString(),
+                    new { before.Text, before.Latitude, before.Longitude, provenance = before.Provenance.ToString(), precision = before.Precision.ToString(), before.GeocoderPlaceName },
+                    new { incident.Location.Text, incident.Location.Latitude, incident.Location.Longitude, provenance = incident.Location.Provenance.ToString() });
             }
 
             return result;
@@ -397,6 +414,11 @@ internal sealed class IncidentService(
         if (!terminal && incident.ApprovedSeverity.HasValue)
         {
             actions.Add(IncidentAction.ChangeSeverity);
+        }
+
+        if (!terminal)
+        {
+            actions.Add(IncidentAction.VerifyLocation);
         }
 
         return actions;

@@ -1135,6 +1135,97 @@
         }
       }
     },
+    "/api/v1/incidents/{id}/location": {
+      "put": {
+        "tags": [
+          "Incidents"
+        ],
+        "summary": "Confirms or corrects the location. This is the only way a location becomes verified.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyLocationRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyLocationRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyLocationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IncidentDetailResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/public/reports": {
       "post": {
         "tags": [
@@ -2250,6 +2341,16 @@
           }
         }
       },
+      "GeocodingStatus": {
+        "enum": [
+          "NotRequired",
+          "Pending",
+          "Processing",
+          "Succeeded",
+          "NoResult",
+          "Failed"
+        ]
+      },
       "IFormFile": {
         "type": "string",
         "format": "binary"
@@ -2269,7 +2370,8 @@
           "Resolve",
           "Reopen",
           "Close",
-          "ChangeSeverity"
+          "ChangeSeverity",
+          "VerifyLocation"
         ],
         "description": "Coordinator operations that may be offered on an incident, given its status and the caller's role."
       },
@@ -2297,6 +2399,7 @@
           "aiRecommendedSeverity",
           "location",
           "locationNeedsVerification",
+          "geocodingStatus",
           "assignedCoordinator",
           "verifiedBy",
           "verifiedAt",
@@ -2368,6 +2471,9 @@
           },
           "locationNeedsVerification": {
             "type": "boolean"
+          },
+          "geocodingStatus": {
+            "$ref": "#/components/schemas/GeocodingStatus"
           },
           "assignedCoordinator": {
             "oneOf": [
@@ -2774,7 +2880,8 @@
           "precision",
           "isVerified",
           "verifiedBy",
-          "verifiedAt"
+          "verifiedAt",
+          "geocoderPlaceName"
         ],
         "type": "object",
         "properties": {
@@ -2820,6 +2927,12 @@
               "string"
             ],
             "format": "date-time"
+          },
+          "geocoderPlaceName": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -3461,6 +3574,39 @@
           }
         },
         "description": "An omitted severity is a validation error, never a silent default."
+      },
+      "VerifyLocationRequest": {
+        "required": [
+          "text",
+          "latitude",
+          "longitude",
+          "version"
+        ],
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string"
+          },
+          "latitude": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "longitude": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "description": "A coordinator confirms or corrects the location; the result is the only verified kind (Requirement 8.5)."
       },
       "VersionedRequest": {
         "required": [

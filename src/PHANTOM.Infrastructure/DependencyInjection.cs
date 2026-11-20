@@ -4,8 +4,10 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using PHANTOM.Application.Abstractions;
+using PHANTOM.Application.Geocoding;
 using PHANTOM.Application.Intelligence;
 using PHANTOM.Infrastructure.Common;
+using PHANTOM.Infrastructure.Geocoding;
 using PHANTOM.Infrastructure.Identity;
 using PHANTOM.Infrastructure.Intelligence;
 using PHANTOM.Infrastructure.Persistence;
@@ -53,6 +55,7 @@ public static class DependencyInjection
         services.AddScoped<IIncidentNumberGenerator, PostgresIncidentNumberGenerator>();
         services.AddScoped<DemoDataSeeder>();
         AddIntelligence(services, configuration, environment);
+        AddGeocoding(services, configuration);
 
         services.AddHealthChecks().AddDbContextCheck<PhantomDbContext>("database", tags: ["ready"]);
         return services;
@@ -101,6 +104,40 @@ public static class DependencyInjection
         if (ai.WorkerEnabled)
         {
             services.AddHostedService<AnalysisWorker>();
+        }
+    }
+
+    private static void AddGeocoding(IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddOptions<MapboxOptions>()
+            .Bind(configuration.GetSection(MapboxOptions.SectionName))
+            .Validate(o => o.TimeoutSeconds is >= 1 and <= 60, "Mapbox:TimeoutSeconds must be 1-60.")
+            .Validate(o => o.PollIntervalSeconds is >= 1 and <= 300, "Mapbox:PollIntervalSeconds must be 1-300.")
+            .Validate(o => o.StuckAfterMinutes is >= 1 and <= 60, "Mapbox:StuckAfterMinutes must be 1-60.")
+            .ValidateOnStart();
+
+        var mapbox = configuration.GetSection(MapboxOptions.SectionName).Get<MapboxOptions>() ?? new MapboxOptions();
+        if (mapbox.HasToken)
+        {
+            services.AddHttpClient<IGeocodingService, MapboxGeocodingService>((sp, http) =>
+                {
+                    http.BaseAddress = sp.GetRequiredService<IOptions<MapboxOptions>>().Value.BaseUrl;
+                    http.Timeout = Timeout.InfiniteTimeSpan; // per-call timeout is enforced by the service
+                })
+                // Mapbox takes the token in the query string; the default HttpClient logs would record it.
+                .RemoveAllLoggers();
+        }
+        else
+        {
+            // No simulated geocoder: coordinates are never invented (Requirement 8.4).
+            services.AddSingleton<IGeocodingService, UnconfiguredGeocodingService>();
+        }
+
+        services.AddSingleton<GeocodingSignal>();
+        services.AddSingleton<IGeocodingSignal>(sp => sp.GetRequiredService<GeocodingSignal>());
+        if (mapbox.WorkerEnabled)
+        {
+            services.AddHostedService<GeocodingWorker>();
         }
     }
 }
