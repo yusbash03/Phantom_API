@@ -4,10 +4,13 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using PHANTOM.API.Hubs;
 using PHANTOM.API.Infrastructure;
 using PHANTOM.API.Middleware;
 using PHANTOM.Application;
 using PHANTOM.Application.Abstractions;
+using PHANTOM.Application.Realtime;
 using PHANTOM.Infrastructure;
 using PHANTOM.Infrastructure.Identity;
 using PHANTOM.Infrastructure.Persistence;
@@ -49,6 +52,11 @@ builder.Services.AddInfrastructure(builder.Configuration, builder.Environment);
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
 
+// ---- Real-time (Requirement 13) ------------------------------------------------------------
+builder.Services.AddSignalR(o => o.EnableDetailedErrors = false)
+    .AddJsonProtocol(o => o.PayloadSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter()));
+builder.Services.Replace(ServiceDescriptor.Singleton<IRealtimePublisher, SignalRRealtimePublisher>());
+
 // ---- Authentication & authorisation --------------------------------------------------------
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -69,6 +77,21 @@ builder.Services
             NameClaimType = PhantomClaimTypes.Name,
             RoleClaimType = PhantomClaimTypes.Role,
             ValidAlgorithms = [SecurityAlgorithms.HmacSha256],
+        };
+        // Browsers cannot set headers on WebSocket/SSE requests, so SignalR sends the token as a query
+        // parameter. Accept it only on the hub path. Request logging records the path, never the query.
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var token = context.Request.Query["access_token"];
+                if (!string.IsNullOrEmpty(token) && context.HttpContext.Request.Path.StartsWithSegments(OperationsHub.Path))
+                {
+                    context.Token = token;
+                }
+
+                return Task.CompletedTask;
+            },
         };
     });
 builder.Services.AddAuthorization(Policies.Configure);
@@ -180,6 +203,9 @@ app.UseAuthorization();
 app.UseRateLimiter();
 
 app.MapControllers();
+// Connections close when the access token expires; the client reconnects with a fresh one, so a
+// deactivated user or a removed role stops receiving events within one token lifetime.
+app.MapHub<OperationsHub>(OperationsHub.Path, o => o.CloseOnAuthenticationExpiration = true);
 if (exposeApiDocs)
 {
     app.MapOpenApi("/openapi/{documentName}.json").AllowAnonymous();

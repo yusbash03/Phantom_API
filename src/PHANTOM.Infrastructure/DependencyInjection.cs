@@ -1,3 +1,6 @@
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using PHANTOM.Infrastructure.Realtime;
+using PHANTOM.Application.Realtime;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -24,7 +27,7 @@ public static class DependencyInjection
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration, IHostEnvironment environment)
     {
         // Resolved lazily so tooling (e.g. build-time OpenAPI export) can build the host without a database.
-        services.AddDbContext<PhantomDbContext>(options =>
+        services.AddDbContext<PhantomDbContext>((sp, options) =>
         {
             var connectionString = configuration.GetConnectionString(ConnectionStringName);
             if (string.IsNullOrWhiteSpace(connectionString))
@@ -34,7 +37,11 @@ public static class DependencyInjection
             }
 
             ConfigureDbContext(options, connectionString);
+            options.AddInterceptors(sp.GetRequiredService<RealtimeChangeInterceptor>());
         });
+        // Real-time events are derived from saved changes and published after commit (design §9).
+        services.TryAddSingleton<IRealtimePublisher, NullRealtimePublisher>();
+        services.AddSingleton<RealtimeChangeInterceptor>();
         services.AddScoped<IPhantomDbContext>(sp => sp.GetRequiredService<PhantomDbContext>());
 
         services.AddOptions<JwtOptions>()
