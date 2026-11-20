@@ -141,7 +141,10 @@ Do not start a Phase 3 feature while the previous one has unresolved critical fa
   - Assign/cancel (coordinator), acknowledge/decline/status/updates/complete (assignee only), system-driven incident transitions, "My assignments" screen
   - Tests: non-assignee gets 404; AI never creates assignments; transition properties
   - _Requirements: 11.1–11.8_
-- [ ] 25. Notifications (in-app) [API + UI]
+- [x] 25. Notifications (in-app) [API + UI]
+  - Verified 2026-11-20: 144 unit tests (3 new) and 114 integration tests (5 new, stable over 3 runs). The integration tests cover all six triggers reaching exactly the right people, no notification for unlinked responders, Critical alerts sent once and never for High, and own-notifications-only access with 404 for others. 72 Vitest (6 new) and 30 Playwright tests (2 new: assignment notice to the responder → My assignments; decline notice to the coordinator → incident) pass.
+  - Notifications are written in the same transaction as the event that causes them: assigned/cancelled to the responder's linked account; Critical AI recommendation, possible duplicate, decline and completion to every active coordinator. They contain incident numbers and titles only, never reporter contact details.
+  - The UI has a top-bar bell with the unread count in its accessible name, a recent list, mark read / mark all read, and a full Notifications page. It polls every 30 s; SignalR push is task 29. A double full stop in decline/completion messages was found by e2e and fixed.
   - _Requirements: 14.1–14.3_
 - [ ] 26. Incident history timeline and audit search [API + UI]
   - _Requirements: 15.1–15.6_

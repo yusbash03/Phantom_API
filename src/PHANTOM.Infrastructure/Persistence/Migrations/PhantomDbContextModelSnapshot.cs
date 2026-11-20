@@ -924,6 +924,60 @@ namespace PHANTOM.Infrastructure.Persistence.Migrations
                     b.ToTable("incident_updates", (string)null);
                 });
 
+            modelBuilder.Entity("PHANTOM.Domain.Notifications.Notification", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("AssignmentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("assignment_id");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("body");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("IncidentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("incident_id");
+
+                    b.Property<DateTimeOffset?>("ReadAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("read_at");
+
+                    b.Property<Guid>("RecipientUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("recipient_user_id");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("title");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("type");
+
+                    b.HasKey("Id")
+                        .HasName("pk_notifications");
+
+                    b.HasIndex("RecipientUserId", "ReadAt", "CreatedAt")
+                        .HasDatabaseName("ix_notifications_recipient_user_id_read_at_created_at");
+
+                    b.ToTable("notifications", (string)null);
+                });
+
             modelBuilder.Entity("PHANTOM.Domain.Responders.Responder", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1215,6 +1269,16 @@ namespace PHANTOM.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_incident_updates_incidents_incident_id");
+                });
+
+            modelBuilder.Entity("PHANTOM.Domain.Notifications.Notification", b =>
+                {
+                    b.HasOne("PHANTOM.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("RecipientUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_notifications_users_recipient_user_id");
                 });
 
             modelBuilder.Entity("PHANTOM.Domain.Responders.Responder", b =>

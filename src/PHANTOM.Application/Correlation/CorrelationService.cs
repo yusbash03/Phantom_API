@@ -8,11 +8,13 @@ using PHANTOM.Application.Audit;
 using PHANTOM.Application.Common;
 using PHANTOM.Application.Incidents;
 using PHANTOM.Application.Intelligence;
+using PHANTOM.Application.Notifications;
 using PHANTOM.Domain.Audit;
 using PHANTOM.Domain.Common;
 using PHANTOM.Domain.Correlation;
 using PHANTOM.Domain.Identity;
 using PHANTOM.Domain.Incidents;
+using PHANTOM.Domain.Notifications;
 
 namespace PHANTOM.Application.Correlation;
 
@@ -40,6 +42,7 @@ internal sealed class CorrelationService(
     ICurrentUser currentUser,
     IAuditWriter audit,
     IClock clock,
+    INotifier notifier,
     IValidator<LinkIncidentRequest> linkValidator,
     IValidator<RelationDecisionRequest> decisionValidator,
     ILogger<CorrelationService> logger) : ICorrelationService
@@ -53,6 +56,7 @@ internal sealed class CorrelationService(
     private sealed class CandidateRow
     {
         public Guid Id { get; init; }
+        public string Number { get; init; } = string.Empty;
         public DateTimeOffset CreatedAt { get; init; }
         public IncidentCategory Category { get; init; }
         public IncidentStatus Status { get; init; }
@@ -118,6 +122,8 @@ internal sealed class CorrelationService(
             db.IncidentRelations.Add(relation);
             audit.RecordSystem(AuditActions.RelationSuggested, nameof(IncidentRelation), relation.Id.ToString(),
                 newValue: new { relation.SourceIncidentId, relation.TargetIncidentId, type = relation.Type.ToString(), relation.Score, relation.Explanation });
+            await notifier.NotifyCoordinatorsAsync(NotificationType.PossibleDuplicate, $"Possible duplicate: {subject.Number} and {candidate.Number}",
+                $"{Math.Round(result.Score * 100)}% match. {result.Explanation}. Nothing is merged until a coordinator decides.", incidentId, null, cancellationToken);
             suggestions++;
         }
 
@@ -313,6 +319,7 @@ internal sealed class CorrelationService(
         db.Incidents.AsNoTracking().Select(i => new CandidateRow
         {
             Id = i.Id,
+            Number = i.Number,
             CreatedAt = i.CreatedAt,
             Category = i.Category,
             Status = i.Status,

@@ -4,11 +4,13 @@ using PHANTOM.Application.Abstractions;
 using PHANTOM.Application.Audit;
 using PHANTOM.Application.Common;
 using PHANTOM.Application.Incidents;
+using PHANTOM.Application.Notifications;
 using PHANTOM.Domain.Assignments;
 using PHANTOM.Domain.Audit;
 using PHANTOM.Domain.Common;
 using PHANTOM.Domain.Identity;
 using PHANTOM.Domain.Incidents;
+using PHANTOM.Domain.Notifications;
 using PHANTOM.Domain.Responders;
 
 namespace PHANTOM.Application.Assignments;
@@ -37,6 +39,7 @@ internal sealed class AssignmentService(
     ICurrentUser currentUser,
     IAuditWriter audit,
     IClock clock,
+    INotifier notifier,
     IServiceProvider services) : IAssignmentService
 {
     private const int MineLimit = 50;
@@ -111,6 +114,12 @@ internal sealed class AssignmentService(
             metadata: problems.Count > 0 ? new { overrideReason = assignment.OverrideReason, overriddenChecks = problems } : null);
 
         SetResponderAssigned(responder, assignment.Id, now);
+        if (responder.UserId is { } responderUserId)
+        {
+            notifier.NotifyUser(responderUserId, NotificationType.AssignmentCreated, $"New assignment: {incident.Number}",
+                $"{incident.Title} — {incident.Location.Text}. Acknowledge it in My assignments.", incident.Id, assignment.Id);
+        }
+
         if (incident.Status == IncidentStatus.Verified)
         {
             ApplySystemTransition(incident, IncidentTransition.FirstAssignmentCreated, i => i.MarkAssigned(now), assignment.Id);
@@ -156,6 +165,13 @@ internal sealed class AssignmentService(
 
         RecordStatusChange(assignment, from, request.Reason);
         await ApplyEndedEffectsAsync(assignment, cancellationToken);
+        var (responderUserId, _, incidentNumber) = await NotificationContextAsync(assignment, cancellationToken);
+        if (responderUserId is { } userId)
+        {
+            notifier.NotifyUser(userId, NotificationType.AssignmentCancelled, $"Assignment cancelled: {incidentNumber}",
+                $"Reason: {request.Reason.Trim()}", assignment.IncidentId, assignment.Id);
+        }
+
         return await SaveAsync(assignment, cancellationToken);
     }
 
@@ -188,42 +204,43 @@ internal sealed class AssignmentService(
     }
 
     public Task<Result<AssignmentResponse>> AcknowledgeAsync(Guid id, CancellationToken cancellationToken) =>
-        AsAssigneeAsync(id, reason: null, cancellationToken: cancellationToken, apply: (assignment, _, now) => Task.FromResult(assignment.Acknowledge(now)));
+        AsAssigneeAsync(id, null, transition: (assignment, _, now) => Task.FromResult(assignment.Acknowledge(now)), consequences: null, cancellationToken: cancellationToken);
 
-    public Task<Result<AssignmentResponse>> DeclineAsync(Guid id, AssignmentReasonRequest request, CancellationToken cancellationToken) =>
-        AsAssigneeAsync(id, reason: request.Reason, cancellationToken: cancellationToken, apply: async (assignment, _, now) =>
+    public async Task<Result<AssignmentResponse>> DeclineAsync(Guid id, AssignmentReasonRequest request, CancellationToken cancellationToken)
+    {
+        var invalid = await ValidateAsync(request, cancellationToken);
+        if (invalid is not null)
         {
-            var invalid = await ValidateAsync(request, cancellationToken);
-            if (invalid is not null)
-            {
-                return invalid;
-            }
+            return invalid;
+        }
 
-            var result = assignment.Decline(request.Reason, now);
-            if (result.IsSuccess)
+        return await AsAssigneeAsync(id, request.Reason, cancellationToken: cancellationToken,
+            transition: (assignment, _, now) => Task.FromResult(assignment.Decline(request.Reason, now)),
+            consequences: async (assignment, _, _) =>
             {
                 await ApplyEndedEffectsAsync(assignment, cancellationToken);
-            }
+                var (_, callSign, incidentNumber) = await NotificationContextAsync(assignment, cancellationToken);
+                await notifier.NotifyCoordinatorsAsync(NotificationType.AssignmentDeclined, $"{callSign} declined {incidentNumber}",
+                    $"Reason: {Sentence(request.Reason)} The incident needs another responder.", assignment.IncidentId, assignment.Id, cancellationToken);
+            });
+    }
 
-            return result;
-        });
-
-    public Task<Result<AssignmentResponse>> SetStatusAsync(Guid id, AssignmentStatusRequest request, CancellationToken cancellationToken) =>
-        AsAssigneeAsync(id, reason: null, cancellationToken: cancellationToken, apply: async (assignment, _, now) =>
+    public async Task<Result<AssignmentResponse>> SetStatusAsync(Guid id, AssignmentStatusRequest request, CancellationToken cancellationToken)
+    {
+        var invalid = await ValidateAsync(request, cancellationToken);
+        if (invalid is not null)
         {
-            var invalid = await ValidateAsync(request, cancellationToken);
-            if (invalid is not null)
-            {
-                return invalid;
-            }
+            return invalid;
+        }
 
-            if (request.Status == AssignmentStatus.OnScene)
-            {
-                return assignment.MarkOnScene(now);
-            }
+        if (request.Status == AssignmentStatus.OnScene)
+        {
+            return await AsAssigneeAsync(id, null, transition: (assignment, _, now) => Task.FromResult(assignment.MarkOnScene(now)), consequences: null, cancellationToken: cancellationToken);
+        }
 
-            var result = assignment.MarkEnRoute(now);
-            if (result.IsSuccess)
+        return await AsAssigneeAsync(id, null, cancellationToken: cancellationToken,
+            transition: (assignment, _, now) => Task.FromResult(assignment.MarkEnRoute(now)),
+            consequences: async (assignment, _, now) =>
             {
                 // Design §3.3: the first assignee en route moves the incident to In progress.
                 var incident = await db.Incidents.FirstAsync(i => i.Id == assignment.IncidentId, cancellationToken);
@@ -231,10 +248,8 @@ internal sealed class AssignmentService(
                 {
                     ApplySystemTransition(incident, IncidentTransition.ResponderEnRoute, i => i.MarkInProgress(now), assignment.Id);
                 }
-            }
-
-            return result;
-        });
+            });
+    }
 
     public async Task<Result<AssignmentResponse>> PostUpdateAsync(Guid id, AssignmentUpdateRequest request, CancellationToken cancellationToken)
     {
@@ -263,33 +278,40 @@ internal sealed class AssignmentService(
         return await SaveAsync(assignment, cancellationToken);
     }
 
-    public Task<Result<AssignmentResponse>> CompleteAsync(Guid id, CompleteAssignmentRequest request, CancellationToken cancellationToken) =>
-        AsAssigneeAsync(id, reason: null, cancellationToken: cancellationToken, apply: async (assignment, userId, now) =>
+    public async Task<Result<AssignmentResponse>> CompleteAsync(Guid id, CompleteAssignmentRequest request, CancellationToken cancellationToken)
+    {
+        var invalid = await ValidateAsync(request, cancellationToken);
+        if (invalid is not null)
         {
-            var invalid = await ValidateAsync(request, cancellationToken);
-            if (invalid is not null)
-            {
-                return invalid;
-            }
+            return invalid;
+        }
 
-            var result = assignment.Complete(request.Notes, now);
-            if (result.IsSuccess)
+        return await AsAssigneeAsync(id, null, cancellationToken: cancellationToken,
+            transition: (assignment, _, now) => Task.FromResult(assignment.Complete(request.Notes, now)),
+            consequences: async (assignment, userId, _) =>
             {
                 // Requirement 11.8: the responder's notes are kept; only a coordinator resolves the incident.
+                // Timestamped when written, so the history shows the completion and then its notes.
                 db.IncidentUpdates.Add(IncidentUpdate.Create(Guid.CreateVersion7(), assignment.IncidentId, assignment.Id, userId,
-                    IncidentUpdateKind.ResolutionNote, request.Notes, now));
+                    IncidentUpdateKind.ResolutionNote, request.Notes, clock.UtcNow));
                 await ApplyEndedEffectsAsync(assignment, cancellationToken);
-            }
-
-            return result;
-        });
+                var (_, callSign, incidentNumber) = await NotificationContextAsync(assignment, cancellationToken);
+                await notifier.NotifyCoordinatorsAsync(NotificationType.AssignmentCompleted, $"{callSign} completed their assignment on {incidentNumber}",
+                    $"{Sentence(request.Notes)} Review and resolve the incident when appropriate.", assignment.IncidentId, assignment.Id, cancellationToken);
+            });
+    }
 
     // ── Shared workflow pieces ─────────────────────────────────────────────────
 
+    /// <summary>
+    /// Runs an assignee action as: domain transition, then its audit record, then its consequences
+    /// (incident transitions, responder release, notifications), so the audit trail reads cause → effect.
+    /// </summary>
     private async Task<Result<AssignmentResponse>> AsAssigneeAsync(
         Guid id,
-        Func<ResponderAssignment, Guid, DateTimeOffset, Task<Result>> apply,
         string? reason,
+        Func<ResponderAssignment, Guid, DateTimeOffset, Task<Result>> transition,
+        Func<ResponderAssignment, Guid, DateTimeOffset, Task>? consequences,
         CancellationToken cancellationToken)
     {
         var loaded = await LoadAsAssigneeAsync(id, cancellationToken);
@@ -300,17 +322,22 @@ internal sealed class AssignmentService(
 
         var (assignment, userId) = loaded.Value;
         var from = assignment.Status;
-        var result = await apply(assignment, userId, clock.UtcNow);
+        var now = clock.UtcNow;
+        var result = await transition(assignment, userId, now);
         if (result.IsFailure)
         {
             return result.Error!;
         }
 
         RecordStatusChange(assignment, from, reason);
+        if (consequences is not null)
+        {
+            await consequences(assignment, userId, now);
+        }
+
         return await SaveAsync(assignment, cancellationToken);
     }
 
-    /// <summary>Requirement 11.5: anyone but the assigned responder's linked user gets 404, not 403.</summary>
     private async Task<Result<(ResponderAssignment Assignment, Guid UserId)>> LoadAsAssigneeAsync(Guid id, CancellationToken cancellationToken)
     {
         if (currentUser.UserId is not { } userId)
@@ -350,6 +377,21 @@ internal sealed class AssignmentService(
         {
             ApplySystemTransition(incident, IncidentTransition.AllAssignmentsEnded, i => i.RevertToVerified(now), ended.Id);
         }
+    }
+
+    /// <summary>Free text as a sentence: trimmed, ending with exactly one full stop (or its own ! / ?).</summary>
+    private static string Sentence(string text)
+    {
+        var trimmed = text.Trim();
+        return trimmed.EndsWith('.') || trimmed.EndsWith('!') || trimmed.EndsWith('?') ? trimmed : trimmed + ".";
+    }
+
+    private async Task<(Guid? ResponderUserId, string CallSign, string IncidentNumber)> NotificationContextAsync(ResponderAssignment assignment, CancellationToken cancellationToken)
+    {
+        var responder = await db.Responders.AsNoTracking().Where(r => r.Id == assignment.ResponderId)
+            .Select(r => new { r.UserId, r.CallSign }).FirstAsync(cancellationToken);
+        var number = await db.Incidents.AsNoTracking().Where(i => i.Id == assignment.IncidentId).Select(i => i.Number).FirstAsync(cancellationToken);
+        return (responder.UserId, responder.CallSign, number);
     }
 
     private void SetResponderAssigned(Responder responder, Guid assignmentId, DateTimeOffset now)

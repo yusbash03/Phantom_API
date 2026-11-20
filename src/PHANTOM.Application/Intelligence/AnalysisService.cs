@@ -6,9 +6,11 @@ using PHANTOM.Application.Audit;
 using PHANTOM.Application.Correlation;
 using PHANTOM.Application.Geocoding;
 using PHANTOM.Application.Incidents;
+using PHANTOM.Application.Notifications;
 using PHANTOM.Domain.Audit;
 using PHANTOM.Domain.Common;
 using PHANTOM.Domain.Incidents;
+using PHANTOM.Domain.Notifications;
 
 namespace PHANTOM.Application.Intelligence;
 
@@ -29,6 +31,7 @@ internal sealed class AnalysisService(
     IAnalysisSignal signal,
     ICorrelationService correlation,
     IGeocodingSignal geocodingSignal,
+    INotifier notifier,
     IAuditWriter audit,
     ICurrentUser currentUser,
     IClock clock,
@@ -90,6 +93,18 @@ internal sealed class AnalysisService(
                     simulated = outcome.Provider == IntelligenceProviders.Simulated,
                     latencyMs,
                 });
+            // Requirement 14.1: a newly Critical recommendation alerts coordinators (once, not on every retry).
+            if (result.Severity == Severity.Critical)
+            {
+                var incident = await db.Incidents.AsNoTracking().Where(i => i.Id == analysis.IncidentId)
+                    .Select(i => new { i.Number, i.Title, i.AiRecommendedSeverity }).FirstOrDefaultAsync(cancellationToken);
+                if (incident is not null && incident.AiRecommendedSeverity != Severity.Critical)
+                {
+                    await notifier.NotifyCoordinatorsAsync(NotificationType.CriticalAiRecommendation, $"AI recommends Critical for {incident.Number}",
+                        $"{incident.Title}. This is an AI recommendation, not a decision: review and verify the severity.", analysis.IncidentId, null, cancellationToken);
+                }
+            }
+
             await SaveWithRecommendationAsync(analysis.IncidentId, result, now, cancellationToken);
 
             if (result.NamedLocations.Count > 0)

@@ -5,6 +5,7 @@ using PHANTOM.Domain.Audit;
 using PHANTOM.Domain.Correlation;
 using PHANTOM.Domain.Identity;
 using PHANTOM.Domain.Incidents;
+using PHANTOM.Domain.Notifications;
 using PHANTOM.Domain.Responders;
 
 namespace PHANTOM.Infrastructure.Persistence;
@@ -23,6 +24,7 @@ public sealed class PhantomDbContext(DbContextOptions<PhantomDbContext> options)
     public DbSet<Responder> Responders => Set<Responder>();
     public DbSet<ResponderAssignment> ResponderAssignments => Set<ResponderAssignment>();
     public DbSet<IncidentUpdate> IncidentUpdates => Set<IncidentUpdate>();
+    public DbSet<Notification> Notifications => Set<Notification>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

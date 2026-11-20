@@ -4,6 +4,7 @@ using PHANTOM.Domain.Audit;
 using PHANTOM.Domain.Correlation;
 using PHANTOM.Domain.Identity;
 using PHANTOM.Domain.Incidents;
+using PHANTOM.Domain.Notifications;
 using PHANTOM.Domain.Responders;
 
 namespace PHANTOM.Application.Abstractions;
@@ -23,6 +24,7 @@ public interface IPhantomDbContext
     DbSet<Responder> Responders { get; }
     DbSet<ResponderAssignment> ResponderAssignments { get; }
     DbSet<IncidentUpdate> IncidentUpdates { get; }
+    DbSet<Notification> Notifications { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }
