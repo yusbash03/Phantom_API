@@ -35,8 +35,16 @@ internal sealed class AnalysisService(
     IAuditWriter audit,
     ICurrentUser currentUser,
     IClock clock,
+    IObjectStorage storage,
     ILogger<AnalysisService> logger) : IAnalysisService
 {
+    /// <summary>
+    /// Photo limits per analysis (Requirement 6.10): enough to help, small enough for an inline request.
+    /// Stored photos are already re-encoded and at most 10 MB each.
+    /// </summary>
+    public const int MaxImages = 3;
+    public const long MaxImageBytesTotal = 12 * 1024 * 1024;
+
     private const int MaxConcurrencyRetries = 3;
 
     public async Task ProcessAsync(Guid analysisId, CancellationToken cancellationToken)
@@ -52,6 +60,10 @@ internal sealed class AnalysisService(
             .Where(r => r.Id == analysis.ReportId)
             .Select(r => new IntelligenceRequest(r.Title, r.Description, r.Category, r.LocationText, r.SubmittedAt))
             .FirstOrDefaultAsync(cancellationToken);
+        if (report is not null)
+        {
+            report = report with { Images = await LoadImagesAsync(analysis.ReportId, cancellationToken) };
+        }
 
         var started = Stopwatch.GetTimestamp();
         IntelligenceOutcome outcome;
@@ -80,7 +92,9 @@ internal sealed class AnalysisService(
         if (parsed is { IsSuccess: true })
         {
             var result = parsed.Value;
-            analysis.Succeed(outcome.Provider, outcome.Model, IntelligenceResultParser.Serialize(result), result.Severity, result.Category, latencyMs, now);
+            var imagesUsed = Math.Min(outcome.ImagesUsed, report?.Images.Count ?? 0);
+            analysis.Succeed(outcome.Provider, outcome.Model, IntelligenceResultParser.Serialize(result), result.Severity, result.Category, latencyMs, now,
+                usedImageInput: imagesUsed > 0);
             audit.RecordSystem(AuditActions.AiAnalysisCompleted, nameof(IncidentAnalysis), analysis.Id.ToString(),
                 newValue: new
                 {
@@ -92,6 +106,8 @@ internal sealed class AnalysisService(
                     model = outcome.Model,
                     simulated = IntelligenceProviders.IsStandIn(outcome.Provider),
                     latencyMs,
+                    imagesUsed,
+                    imageAttachmentIds = imagesUsed > 0 ? report!.Images.Take(imagesUsed).Select(i => i.AttachmentId).ToArray() : null,
                 });
             // Requirement 14.1: a newly Critical recommendation alerts coordinators (once, not on every retry).
             if (result.Severity == Severity.Critical)
@@ -134,6 +150,44 @@ internal sealed class AnalysisService(
             newValue: new { incidentId = analysis.IncidentId, attempt = analysis.Attempt, failureCode = code.ToString(), provider = outcome.Provider, model = outcome.Model, latencyMs });
         await db.SaveChangesAsync(cancellationToken);
         logger.LogWarning("Analysis {AnalysisId} for incident {IncidentId} failed: {FailureCode}", analysis.Id, analysis.IncidentId, code);
+    }
+
+    /// <summary>
+    /// The report's photos, oldest first, within <see cref="MaxImages"/> and <see cref="MaxImageBytesTotal"/>.
+    /// A photo that cannot be read is skipped: the text analysis still runs.
+    /// </summary>
+    private async Task<IReadOnlyList<IntelligenceImage>> LoadImagesAsync(Guid reportId, CancellationToken cancellationToken)
+    {
+        var attachments = await db.Attachments.AsNoTracking()
+            .Where(a => a.ReportId == reportId && a.Kind == AttachmentKind.Image)
+            .OrderBy(a => a.CreatedAt)
+            .Select(a => new { a.Id, a.StorageKey, a.ContentType, a.SizeBytes })
+            .ToListAsync(cancellationToken);
+
+        var images = new List<IntelligenceImage>();
+        long total = 0;
+        foreach (var a in attachments)
+        {
+            if (images.Count == MaxImages || total + a.SizeBytes > MaxImageBytesTotal)
+            {
+                break;
+            }
+
+            try
+            {
+                await using var stream = await storage.RetrieveAsync(a.StorageKey, cancellationToken);
+                using var buffer = new MemoryStream();
+                await stream.CopyToAsync(buffer, cancellationToken);
+                images.Add(new IntelligenceImage(a.Id, a.ContentType, buffer.ToArray()));
+                total += buffer.Length;
+            }
+            catch (Exception ex) when (ex is IOException or FileNotFoundException or UnauthorizedAccessException or InvalidOperationException)
+            {
+                logger.LogWarning(ex, "Photo {AttachmentId} could not be read for analysis; continuing without it", a.Id);
+            }
+        }
+
+        return images;
     }
 
     public async Task<Result<IReadOnlyList<AnalysisResponse>>> ListAsync(Guid incidentId, CancellationToken cancellationToken)
@@ -269,6 +323,6 @@ internal sealed class AnalysisService(
         }
 
         return new AnalysisResponse(a.Id, a.Attempt, reportReference, a.Status, a.Provider, a.Model, IntelligenceProviders.IsStandIn(a.Provider), a.SchemaVersion,
-            a.RequestedAt, a.CompletedAt, a.LatencyMs, a.RecommendedSeverity, a.RecommendedCategory, result, a.FailureCode, a.FailureMessage, requestedBy);
+            a.RequestedAt, a.CompletedAt, a.LatencyMs, a.RecommendedSeverity, a.RecommendedCategory, result, a.FailureCode, a.FailureMessage, requestedBy, a.UsedImageInput);
     }
 }

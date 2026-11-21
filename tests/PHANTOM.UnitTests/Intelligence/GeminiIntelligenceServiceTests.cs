@@ -72,8 +72,11 @@ public sealed class GeminiIntelligenceServiceTests
     [Fact]
     public void Prompt_input_has_no_place_for_contact_details_or_identifiers()
     {
-        var fields = typeof(IntelligenceRequest).GetProperties().Select(p => p.Name).ToArray();
-        Assert.Equal(["Title", "Description", "ReportedCategory", "LocationText", "SubmittedAt"], fields);
+        var fields = typeof(IntelligenceRequest).GetProperties().Select(p => p.Name).Order(StringComparer.Ordinal).ToArray();
+        Assert.Equal(["Description", "Images", "LocationText", "ReportedCategory", "SubmittedAt", "Title"], fields);
+        // A photo is its bytes and type; the attachment id is for PHANTOM's own record and is never sent (tested below).
+        var imageFields = typeof(IntelligenceImage).GetProperties().Select(p => p.Name).Order(StringComparer.Ordinal).ToArray();
+        Assert.Equal(["AttachmentId", "ContentType", "Data"], imageFields);
     }
 
     [Fact]
@@ -160,6 +163,43 @@ public sealed class GeminiIntelligenceServiceTests
 
         Assert.Equal(AnalysisFailureCode.ProviderError, outcome.FailureCode);
         Assert.Equal(2, handler.Requests.Count);
+    }
+
+    [Fact]
+    public async Task Sends_report_photos_as_inline_data_after_the_text_and_reports_how_many_were_used()
+    {
+        var handler = new StubHandler(_ => Json(HttpStatusCode.OK, Envelope(IntelligenceResultParserTests.ValidJson().ToJsonString())));
+        byte[] first = [0xFF, 0xD8, 0xFF, 0x01];
+        byte[] second = [0x89, 0x50, 0x4E, 0x47];
+        var request = Request with
+        {
+            Images = [new IntelligenceImage(Guid.NewGuid(), "image/jpeg", first), new IntelligenceImage(Guid.NewGuid(), "image/png", second)],
+        };
+
+        var outcome = await Service(handler).AnalyzeAsync(request, CancellationToken.None);
+
+        Assert.True(outcome.IsSuccess);
+        Assert.Equal(2, outcome.ImagesUsed);
+        var parts = JsonNode.Parse(Assert.Single(handler.Requests).Body)!["contents"]![0]!["parts"]!.AsArray();
+        Assert.Equal(3, parts.Count);
+        Assert.Contains("attached 2 photos", parts[0]!["text"]!.GetValue<string>(), StringComparison.Ordinal);
+        Assert.Equal("image/jpeg", parts[1]!["inlineData"]!["mimeType"]!.GetValue<string>());
+        Assert.Equal(Convert.ToBase64String(first), parts[1]!["inlineData"]!["data"]!.GetValue<string>());
+        Assert.Equal("image/png", parts[2]!["inlineData"]!["mimeType"]!.GetValue<string>());
+        var instruction = JsonNode.Parse(handler.Requests[0].Body)!["systemInstruction"]!["parts"]![0]!["text"]!.GetValue<string>();
+        Assert.Contains("identify people", instruction, StringComparison.Ordinal);
+        Assert.DoesNotContain(request.Images[0].AttachmentId.ToString(), handler.Requests[0].Body, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task A_text_only_report_sends_only_text_and_uses_no_images()
+    {
+        var handler = new StubHandler(_ => Json(HttpStatusCode.OK, Envelope(IntelligenceResultParserTests.ValidJson().ToJsonString())));
+        var outcome = await Service(handler).AnalyzeAsync(Request, CancellationToken.None);
+        Assert.Equal(0, outcome.ImagesUsed);
+        var parts = JsonNode.Parse(Assert.Single(handler.Requests).Body)!["contents"]![0]!["parts"]!.AsArray();
+        var only = Assert.Single(parts);
+        Assert.DoesNotContain("photo", only!["text"]!.GetValue<string>(), StringComparison.OrdinalIgnoreCase);
     }
 
     private static GeminiIntelligenceService Service(StubHandler handler, int maxRetries = 2, int timeoutSeconds = 30)

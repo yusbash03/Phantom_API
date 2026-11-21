@@ -3801,7 +3801,8 @@
           "result",
           "failureCode",
           "failureMessage",
-          "requestedBy"
+          "requestedBy",
+          "usedImageInput"
         ],
         "type": "object",
         "properties": {
@@ -3910,6 +3911,9 @@
                 "$ref": "#/components/schemas/UserRef"
               }
             ]
+          },
+          "usedImageInput": {
+            "type": "boolean"
           }
         },
         "description": "One AI analysis attempt as shown to staff. `Result` is a recommendation, never an approved value."

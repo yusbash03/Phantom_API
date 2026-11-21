@@ -90,9 +90,11 @@ public sealed class IncidentAnalysis
         };
     }
 
-    public void Succeed(string provider, string model, string resultJson, Severity severity, IncidentCategory category, int latencyMs, DateTimeOffset completedAt)
+    public void Succeed(string provider, string model, string resultJson, Severity severity, IncidentCategory category, int latencyMs, DateTimeOffset completedAt,
+        bool usedImageInput = false)
     {
         EnsureProcessing();
+        UsedImageInput = usedImageInput;
         ArgumentException.ThrowIfNullOrWhiteSpace(resultJson);
         Status = AnalysisStatus.Succeeded;
         Provider = Bound(provider, MaxProviderLength);

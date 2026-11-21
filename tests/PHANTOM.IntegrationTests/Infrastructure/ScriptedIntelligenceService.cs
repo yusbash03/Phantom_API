@@ -19,6 +19,9 @@ public sealed class ScriptedIntelligenceService : IIncidentIntelligenceService
     public const string Critical = "[ai:critical]";
     public const string Place = "[ai:place]";
 
+    /// <summary>Behaves like a text-only provider: photos in the request are not used.</summary>
+    public const string IgnoreImages = "[ai:no-images]";
+
     private readonly ConcurrentDictionary<string, int> _calls = new();
     private readonly ConcurrentDictionary<string, TaskCompletionSource> _holds = new();
 
@@ -60,6 +63,7 @@ public sealed class ScriptedIntelligenceService : IIncidentIntelligenceService
             IncidentCategory.Infrastructure, "Scripted summary.", severity, "Scripted rationale.",
             text.Contains(Place, StringComparison.Ordinal) ? [request.LocationText, ScriptedGeocodingService.KnownLandmark] : [request.LocationText],
             Indication.Unknown, Indication.NotIndicated, ["smoke"], ["Exact address"], ["Call the reporter."], [], "Scripted.");
-        return IntelligenceOutcome.Success("Scripted", "scripted-1", JsonSerializer.Serialize(result, IntelligenceResultParser.JsonOptions));
+        return IntelligenceOutcome.Success("Scripted", "scripted-1", JsonSerializer.Serialize(result, IntelligenceResultParser.JsonOptions),
+            text.Contains(IgnoreImages, StringComparison.Ordinal) ? 0 : request.Images.Count);
     }
 }

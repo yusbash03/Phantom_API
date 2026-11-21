@@ -14,14 +14,21 @@ public interface IIncidentIntelligenceService
 
 /// <summary>
 /// Everything the model is allowed to see (Requirement 6.8, security steering): report text,
-/// category, location text and timestamp. Never contact details, IPs or user identifiers.
+/// category, location text, timestamp and the report's photos (6.10). Never contact details, IPs or user
+/// identifiers. Photos are the stored copies, re-encoded at intake so their metadata (e.g. GPS) is gone.
 /// </summary>
 public sealed record IntelligenceRequest(
     string Title,
     string Description,
     IncidentCategory ReportedCategory,
     string LocationText,
-    DateTimeOffset SubmittedAt);
+    DateTimeOffset SubmittedAt)
+{
+    public IReadOnlyList<IntelligenceImage> Images { get; init; } = [];
+}
+
+/// <summary>A photo from the report, as stored (JPEG, PNG or WebP).</summary>
+public sealed record IntelligenceImage(Guid AttachmentId, string ContentType, byte[] Data);
 
 public static class IntelligenceProviders
 {
@@ -62,7 +69,11 @@ public sealed record IntelligenceOutcome
 
     public bool IsSuccess => FailureCode is null;
 
-    public static IntelligenceOutcome Success(string provider, string model, string rawJson) => new(provider, model, rawJson, null, null);
+    /// <summary>How many of the request's photos the provider actually received (0 for stand-ins that ignore them).</summary>
+    public int ImagesUsed { get; private init; }
+
+    public static IntelligenceOutcome Success(string provider, string model, string rawJson, int imagesUsed = 0) =>
+        new(provider, model, rawJson, null, null) { ImagesUsed = Math.Max(0, imagesUsed) };
 
     public static IntelligenceOutcome Failure(string provider, string model, AnalysisFailureCode code, string message) =>
         new(provider, model, null, code, message);

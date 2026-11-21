@@ -82,7 +82,7 @@ internal sealed class GeminiIntelligenceService(
                     return Failure(model, AnalysisFailureCode.ProviderError, $"The AI provider returned an error (HTTP {status}).");
                 }
 
-                return await ReadEnvelopeAsync(response, model, cancellationToken);
+                return await ReadEnvelopeAsync(response, model, request.Images.Count, cancellationToken);
             }
         }
     }
@@ -93,7 +93,7 @@ internal sealed class GeminiIntelligenceService(
         ["contents"] = new JsonArray(new JsonObject
         {
             ["role"] = "user",
-            ["parts"] = new JsonArray(new JsonObject { ["text"] = IntelligencePrompt.BuildUserContent(request) }),
+            ["parts"] = Parts(request),
         }),
         ["generationConfig"] = new JsonObject
         {
@@ -104,7 +104,22 @@ internal sealed class GeminiIntelligenceService(
         },
     };
 
-    private static async Task<IntelligenceOutcome> ReadEnvelopeAsync(HttpResponseMessage response, string model, CancellationToken cancellationToken)
+    /// <summary>The report text, then each photo as inline data (Requirement 6.10).</summary>
+    private static JsonArray Parts(IntelligenceRequest request)
+    {
+        var parts = new JsonArray(new JsonObject { ["text"] = IntelligencePrompt.BuildUserContent(request) });
+        foreach (var image in request.Images)
+        {
+            parts.Add(new JsonObject
+            {
+                ["inlineData"] = new JsonObject { ["mimeType"] = image.ContentType, ["data"] = Convert.ToBase64String(image.Data) },
+            });
+        }
+
+        return parts;
+    }
+
+    private static async Task<IntelligenceOutcome> ReadEnvelopeAsync(HttpResponseMessage response, string model, int imagesSent, CancellationToken cancellationToken)
     {
         JsonNode? envelope;
         try
@@ -148,7 +163,7 @@ internal sealed class GeminiIntelligenceService(
 
         return text.Length == 0
             ? Failure(reportedModel, AnalysisFailureCode.InvalidOutput, "The AI provider returned an empty answer.")
-            : IntelligenceOutcome.Success(AiOptions.GeminiProvider, reportedModel, text.ToString());
+            : IntelligenceOutcome.Success(AiOptions.GeminiProvider, reportedModel, text.ToString(), imagesSent);
     }
 
     private Task DelayAsync(int attempt, TimeSpan? retryAfter, CancellationToken cancellationToken)

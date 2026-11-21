@@ -27,4 +27,5 @@ public sealed record AnalysisResponse(
     IntelligenceResultV1? Result,
     AnalysisFailureCode? FailureCode,
     string? FailureMessage,
-    UserRef? RequestedBy);
+    UserRef? RequestedBy,
+    bool UsedImageInput);

@@ -361,9 +361,10 @@ internal sealed class AuditQueryService(IPhantomDbContext db, IValidator<AuditSe
             case AuditActions.AiAnalysisQueued:
                 return (TimelineEventKind.Ai, $"AI analysis queued (attempt {New("attempt")})", null, true);
             case AuditActions.AiAnalysisCompleted:
+                var photos = int.TryParse(New("imagesUsed"), out var used) && used > 0 ? $" Based on the report text and {used} photo{(used == 1 ? "" : "s")}." : string.Empty;
                 return (TimelineEventKind.Ai, $"AI recommended {New("recommendedSeverity")} severity and category {New("recommendedCategory")}",
-                    New("provider") == IntelligenceProviders.RecordedFixture ? "Recorded test fixture replayed, not an analysis of this report."
-                    : New("simulated") == "True" ? "Simulated output, not a real AI result." : "A recommendation only; approved values are set by a coordinator.", true);
+                    (New("provider") == IntelligenceProviders.RecordedFixture ? "Recorded test fixture replayed, not an analysis of this report."
+                    : New("simulated") == "True" ? "Simulated output, not a real AI result." : "A recommendation only; approved values are set by a coordinator.") + photos, true);
             case AuditActions.AiAnalysisFailed:
                 return (TimelineEventKind.Ai, $"AI analysis failed ({New("failureCode")})", "The report and incident were not changed.", true);
             case AuditActions.AiAnalysisRetryRequested:
