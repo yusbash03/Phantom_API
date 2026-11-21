@@ -25,6 +25,7 @@ public sealed class PhantomDbContext(DbContextOptions<PhantomDbContext> options)
     public DbSet<ResponderAssignment> ResponderAssignments => Set<ResponderAssignment>();
     public DbSet<IncidentUpdate> IncidentUpdates => Set<IncidentUpdate>();
     public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<PHANTOM.Domain.Weather.EnvironmentalSnapshot> EnvironmentalSnapshots => Set<PHANTOM.Domain.Weather.EnvironmentalSnapshot>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

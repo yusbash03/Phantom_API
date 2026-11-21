@@ -1,0 +1,39 @@
+{
+  "_about": "A real Open-Meteo 'current' response for 6.45, 3.39 (Lagos), recorded 2026-11-20. Replayed by FixtureWeatherService in test environments only; labelled as a fixture everywhere.",
+  "recordedAt": "2026-11-20T20:46:00Z",
+  "request": {
+    "latitude": 6.45,
+    "longitude": 3.39
+  },
+  "response": {
+    "latitude": 6.4323373,
+    "longitude": 3.3948028,
+    "generationtime_ms": 1.001119613647461,
+    "utc_offset_seconds": 0,
+    "timezone": "GMT",
+    "timezone_abbreviation": "GMT",
+    "elevation": 7.0,
+    "current_units": {
+      "time": "iso8601",
+      "interval": "seconds",
+      "temperature_2m": "°C",
+      "precipitation": "mm",
+      "rain": "mm",
+      "wind_speed_10m": "km/h",
+      "wind_direction_10m": "°",
+      "wind_gusts_10m": "km/h",
+      "visibility": "m"
+    },
+    "current": {
+      "time": "2026-11-20T20:45",
+      "interval": 900,
+      "temperature_2m": 28.6,
+      "precipitation": 0.0,
+      "rain": 0.0,
+      "wind_speed_10m": 11.3,
+      "wind_direction_10m": 216,
+      "wind_gusts_10m": 22.3,
+      "visibility": 21100.0
+    }
+  }
+}

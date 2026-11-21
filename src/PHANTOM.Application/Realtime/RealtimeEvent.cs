@@ -14,6 +14,7 @@ public enum RealtimeEventType
     AssignmentUpdated,
     ResponderAvailabilityChanged,
     NotificationCreated,
+    EnvironmentUpdated,
 }
 
 /// <summary>

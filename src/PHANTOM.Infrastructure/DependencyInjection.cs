@@ -1,3 +1,5 @@
+using PHANTOM.Application.Weather;
+using PHANTOM.Infrastructure.Weather;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using PHANTOM.Infrastructure.Realtime;
 using PHANTOM.Application.Realtime;
@@ -63,6 +65,7 @@ public static class DependencyInjection
         services.AddScoped<DemoDataSeeder>();
         AddIntelligence(services, configuration, environment);
         AddGeocoding(services, configuration);
+        AddWeather(services, configuration, environment);
 
         services.AddHealthChecks().AddDbContextCheck<PhantomDbContext>("database", tags: ["ready"]);
         return services;
@@ -123,6 +126,46 @@ public static class DependencyInjection
         if (ai.WorkerEnabled)
         {
             services.AddHostedService<AnalysisWorker>();
+        }
+    }
+
+    private static void AddWeather(IServiceCollection services, IConfiguration configuration, IHostEnvironment environment)
+    {
+        services.AddOptions<WeatherOptions>()
+            .Bind(configuration.GetSection(WeatherOptions.SectionName))
+            .Validate(o => o.Provider is WeatherOptions.OpenMeteoProvider or WeatherOptions.FixtureProvider,
+                $"Weather:Provider must be '{WeatherOptions.OpenMeteoProvider}' or '{WeatherOptions.FixtureProvider}'.")
+            .Validate(o => o.TimeoutSeconds is >= 1 and <= 30, "Weather:TimeoutSeconds must be 1-30.")
+            .Validate(o => o.CacheMinutes is >= 0 and <= 1440, "Weather:CacheMinutes must be 0-1440.")
+            .Validate(o => o.PollIntervalSeconds is >= 1 and <= 3600, "Weather:PollIntervalSeconds must be 1-3600.")
+            .Validate(o => o.RetryFailedAfterMinutes is >= 1 and <= 1440, "Weather:RetryFailedAfterMinutes must be 1-1440.")
+            .ValidateOnStart();
+        services.AddMemoryCache();
+
+        var weather = configuration.GetSection(WeatherOptions.SectionName).Get<WeatherOptions>() ?? new WeatherOptions();
+        if (weather.Provider == WeatherOptions.FixtureProvider)
+        {
+            // A recorded reading must never be shown as current weather where real incidents are handled.
+            if (!environment.IsDevelopment() && !environment.IsEnvironment("Testing"))
+            {
+                throw new InvalidOperationException(
+                    $"Weather:Provider '{WeatherOptions.FixtureProvider}' is for test environments only, not '{environment.EnvironmentName}'.");
+            }
+
+            services.AddSingleton<IWeatherService, FixtureWeatherService>();
+        }
+        else
+        {
+            services.AddHttpClient<IWeatherService, OpenMeteoWeatherService>((sp, http) =>
+            {
+                http.BaseAddress = sp.GetRequiredService<IOptions<WeatherOptions>>().Value.BaseUrl;
+                http.Timeout = Timeout.InfiniteTimeSpan; // per-call timeout is enforced by the service
+            });
+        }
+
+        if (weather.WorkerEnabled)
+        {
+            services.AddHostedService<WeatherWorker>();
         }
     }
 

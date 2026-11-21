@@ -9,6 +9,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using PHANTOM.Application.Abstractions;
 using PHANTOM.Application.Geocoding;
 using PHANTOM.Application.Intelligence;
+using PHANTOM.Application.Weather;
 using PHANTOM.Domain.Identity;
 using PHANTOM.Infrastructure.Persistence;
 using Testcontainers.PostgreSql;
@@ -28,6 +29,8 @@ public sealed class PhantomApiFactory : WebApplicationFactory<Program>, IAsyncLi
     public ScriptedIntelligenceService Intelligence { get; } = new();
 
     public ScriptedGeocodingService Geocoding { get; } = new();
+
+    public ScriptedWeatherService Weather { get; } = new();
 
     public string StoragePath { get; } = Path.Combine(Path.GetTempPath(), $"phantom-it-{Guid.NewGuid():N}");
 
@@ -61,6 +64,7 @@ public sealed class PhantomApiFactory : WebApplicationFactory<Program>, IAsyncLi
             ["Storage:Local:BasePath"] = StoragePath,
             ["Ai:PollIntervalSeconds"] = "1",
             ["Mapbox:PollIntervalSeconds"] = "1",
+            ["Weather:PollIntervalSeconds"] = "1",
         }));
         builder.ConfigureTestServices(services =>
         {
@@ -68,6 +72,8 @@ public sealed class PhantomApiFactory : WebApplicationFactory<Program>, IAsyncLi
             services.AddSingleton<IIncidentIntelligenceService>(Intelligence);
             services.RemoveAll<IGeocodingService>();
             services.AddSingleton<IGeocodingService>(Geocoding);
+            services.RemoveAll<IWeatherService>();
+            services.AddSingleton<IWeatherService>(Weather);
         });
     }
 

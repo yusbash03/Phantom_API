@@ -1075,6 +1075,72 @@ namespace PHANTOM.Infrastructure.Persistence.Migrations
                     b.ToTable("responders", (string)null);
                 });
 
+            modelBuilder.Entity("PHANTOM.Domain.Weather.EnvironmentalSnapshot", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Data")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("data");
+
+                    b.Property<string>("FailureMessage")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("failure_message");
+
+                    b.Property<string>("FailureReason")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("failure_reason");
+
+                    b.Property<Guid>("IncidentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("incident_id");
+
+                    b.Property<bool>("IsFixture")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_fixture");
+
+                    b.Property<decimal>("Latitude")
+                        .HasPrecision(9, 6)
+                        .HasColumnType("numeric(9,6)")
+                        .HasColumnName("latitude");
+
+                    b.Property<decimal>("Longitude")
+                        .HasPrecision(9, 6)
+                        .HasColumnType("numeric(9,6)")
+                        .HasColumnName("longitude");
+
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("provider");
+
+                    b.Property<DateTimeOffset>("RetrievedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("retrieved_at");
+
+                    b.Property<bool>("Succeeded")
+                        .HasColumnType("boolean")
+                        .HasColumnName("succeeded");
+
+                    b.HasKey("Id")
+                        .HasName("pk_environmental_snapshots");
+
+                    b.HasIndex("IncidentId", "CreatedAt")
+                        .HasDatabaseName("ix_environmental_snapshots_incident_id_created_at");
+
+                    b.ToTable("environmental_snapshots", (string)null);
+                });
+
             modelBuilder.Entity("PHANTOM.Domain.Assignments.ResponderAssignment", b =>
                 {
                     b.HasOne("PHANTOM.Domain.Identity.User", null)
@@ -1288,6 +1354,16 @@ namespace PHANTOM.Infrastructure.Persistence.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_responders_users_user_id");
+                });
+
+            modelBuilder.Entity("PHANTOM.Domain.Weather.EnvironmentalSnapshot", b =>
+                {
+                    b.HasOne("PHANTOM.Domain.Incidents.Incident", null)
+                        .WithMany()
+                        .HasForeignKey("IncidentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_environmental_snapshots_incidents_incident_id");
                 });
 
             modelBuilder.Entity("PHANTOM.Domain.Identity.User", b =>

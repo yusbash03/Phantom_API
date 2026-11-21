@@ -1194,6 +1194,88 @@
         }
       }
     },
+    "/api/v1/incidents/{incidentId}/environment": {
+      "get": {
+        "tags": [
+          "Environment"
+        ],
+        "summary": "The latest reading with its source and retrieval time, or why there is none.",
+        "parameters": [
+          {
+            "name": "incidentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvironmentResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/incidents/{incidentId}/environment/refresh": {
+      "post": {
+        "tags": [
+          "Environment"
+        ],
+        "summary": "Retrieve again now. Readings are cached per area for a short period, so this may return the cached one.",
+        "parameters": [
+          {
+            "name": "incidentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvironmentResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/incidents": {
       "get": {
         "tags": [
@@ -4572,6 +4654,118 @@
           "Other"
         ]
       },
+      "EnvironmentFailureResponse": {
+        "required": [
+          "reason",
+          "message",
+          "at"
+        ],
+        "type": "object",
+        "properties": {
+          "reason": {
+            "$ref": "#/components/schemas/WeatherFailureReason"
+          },
+          "message": {
+            "type": "string"
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "EnvironmentResponse": {
+        "required": [
+          "status",
+          "category",
+          "locationIsVerified",
+          "isForCurrentLocation",
+          "snapshot",
+          "failure",
+          "alertsSupported"
+        ],
+        "type": "object",
+        "properties": {
+          "status": {
+            "$ref": "#/components/schemas/EnvironmentStatus"
+          },
+          "category": {
+            "$ref": "#/components/schemas/IncidentCategory"
+          },
+          "locationIsVerified": {
+            "type": "boolean"
+          },
+          "isForCurrentLocation": {
+            "type": "boolean"
+          },
+          "snapshot": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/EnvironmentSnapshotResponse"
+              }
+            ]
+          },
+          "failure": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/EnvironmentFailureResponse"
+              }
+            ]
+          },
+          "alertsSupported": {
+            "type": "boolean"
+          }
+        },
+        "description": "Weather context for an incident. `Snapshot` is the latest successful reading (which may be for earlier\ncoordinates when `IsForCurrentLocation` is false). Weather alerts are not offered by the provider."
+      },
+      "EnvironmentSnapshotResponse": {
+        "required": [
+          "provider",
+          "retrievedAt",
+          "latitude",
+          "longitude",
+          "isFixture",
+          "reading"
+        ],
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string"
+          },
+          "retrievedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "latitude": {
+            "type": "number",
+            "format": "double"
+          },
+          "longitude": {
+            "type": "number",
+            "format": "double"
+          },
+          "isFixture": {
+            "type": "boolean"
+          },
+          "reading": {
+            "$ref": "#/components/schemas/WeatherReading"
+          }
+        }
+      },
+      "EnvironmentStatus": {
+        "enum": [
+          "NoCoordinates",
+          "Pending",
+          "Available",
+          "Unavailable"
+        ]
+      },
       "ExtractedEntity": {
         "required": [
           "type",
@@ -6521,6 +6715,85 @@
           }
         },
         "description": "Every write carries the `Version` the client last read; a stale version is a conflict."
+      },
+      "WeatherFailureReason": {
+        "enum": [
+          "Timeout",
+          "Unreachable",
+          "ProviderError",
+          "InvalidResponse",
+          "NotConfigured"
+        ],
+        "description": "Why a weather retrieval failed (Requirement 9.5). Values are persisted; never rename."
+      },
+      "WeatherReading": {
+        "required": [
+          "observedAt",
+          "temperatureC",
+          "precipitationMm",
+          "rainMm",
+          "windSpeedKmh",
+          "windDirectionDegrees",
+          "windGustsKmh",
+          "visibilityMetres"
+        ],
+        "type": "object",
+        "properties": {
+          "observedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "temperatureC": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "precipitationMm": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "rainMm": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "windSpeedKmh": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "windDirectionDegrees": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "windGustsKmh": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "visibilityMetres": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          }
+        },
+        "description": "Current conditions (Requirement 9.1). Null where the provider did not report a value."
       }
     },
     "securitySchemes": {
@@ -6554,6 +6827,9 @@
     },
     {
       "name": "Dashboard"
+    },
+    {
+      "name": "Environment"
     },
     {
       "name": "Incidents"

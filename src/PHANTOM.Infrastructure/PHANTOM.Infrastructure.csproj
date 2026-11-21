@@ -18,6 +18,7 @@
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Intelligence\Fixtures\*.json" LogicalName="PHANTOM.Fixtures.%(Filename)%(Extension)" />
+    <EmbeddedResource Include="Weather\Fixtures\*.json" LogicalName="PHANTOM.Fixtures.%(Filename)%(Extension)" />
   </ItemGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="PHANTOM.UnitTests" />

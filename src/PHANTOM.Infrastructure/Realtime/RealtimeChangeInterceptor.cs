@@ -193,6 +193,9 @@ internal sealed class RealtimeChangeInterceptor(IRealtimePublisher publisher, IC
                     yield return Event(RealtimeEventType.IncidentUpdated, report.IncidentId);
                     yield return Event(RealtimeEventType.IncidentUpdated, (Guid)entry.Property(nameof(IncidentReport.IncidentId)).OriginalValue!);
                     break;
+                case PHANTOM.Domain.Weather.EnvironmentalSnapshot snapshot when added:
+                    yield return Event(RealtimeEventType.EnvironmentUpdated, snapshot.IncidentId);
+                    break;
                 case Notification notification when added:
                     yield return Event(RealtimeEventType.NotificationCreated, notification.IncidentId, notification.AssignmentId, recipient: notification.RecipientUserId);
                     break;
