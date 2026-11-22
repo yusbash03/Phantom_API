@@ -283,7 +283,7 @@ internal sealed class IncidentService(
                 r.ReporterPhone,
                 r.ReporterEmail,
                 r.SubmittedAt,
-                attachments[r.Id].Select(a => new AttachmentResponse(a.Id, a.Kind, a.ContentType, a.SizeBytes, a.OriginalFileName, a.CreatedAt)).ToList()))
+                attachments[r.Id].Select(a => new AttachmentResponse(a.Id, a.Kind, a.ContentType, a.SizeBytes, a.OriginalFileName, a.CreatedAt, a.TranscriptText, a.TranscriptProvider, a.TranscribedAt)).ToList()))
             .ToList());
     }
 

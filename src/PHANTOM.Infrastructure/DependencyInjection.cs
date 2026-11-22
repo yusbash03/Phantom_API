@@ -121,6 +121,20 @@ public static class DependencyInjection
             services.AddSingleton<IIncidentIntelligenceService, UnconfiguredIntelligenceService>();
         }
 
+        // Transcription sends the caller's voice to the provider, so it runs only with the real provider configured.
+        if (ai.Provider == AiOptions.GeminiProvider && ai.HasApiKey && ai.TranscriptionEnabled)
+        {
+            services.AddHttpClient<ITranscriptionService, GeminiTranscriptionService>((sp, http) =>
+            {
+                http.BaseAddress = sp.GetRequiredService<IOptions<AiOptions>>().Value.BaseUrl;
+                http.Timeout = Timeout.InfiniteTimeSpan; // the service enforces its own timeout
+            });
+        }
+        else
+        {
+            services.AddSingleton<ITranscriptionService, UnconfiguredTranscriptionService>();
+        }
+
         services.AddSingleton<AnalysisSignal>();
         services.AddSingleton<IAnalysisSignal>(sp => sp.GetRequiredService<AnalysisSignal>());
         if (ai.WorkerEnabled)

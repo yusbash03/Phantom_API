@@ -75,7 +75,12 @@ public sealed record LocationResponse(
     DateTimeOffset? VerifiedAt,
     string? GeocoderPlaceName);
 
-public sealed record AttachmentResponse(Guid Id, AttachmentKind Kind, string ContentType, long SizeBytes, string OriginalFileName, DateTimeOffset CreatedAt);
+/// <summary>
+/// A stored file. For a voice recording, <c>Transcript</c> is the automatic transcript (a derived artefact; the
+/// original recording is kept unchanged) with its provider and time, or null when not transcribed.
+/// </summary>
+public sealed record AttachmentResponse(Guid Id, AttachmentKind Kind, string ContentType, long SizeBytes, string OriginalFileName, DateTimeOffset CreatedAt,
+    string? Transcript, string? TranscriptProvider, DateTimeOffset? TranscribedAt);
 
 /// <summary>An original public submission. Immutable; contact details are visible to staff only.</summary>
 public sealed record IncidentReportResponse(

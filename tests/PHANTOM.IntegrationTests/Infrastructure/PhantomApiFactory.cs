@@ -32,6 +32,8 @@ public sealed class PhantomApiFactory : WebApplicationFactory<Program>, IAsyncLi
 
     public ScriptedWeatherService Weather { get; } = new();
 
+    public ScriptedTranscriptionService Transcription { get; } = new();
+
     public string StoragePath { get; } = Path.Combine(Path.GetTempPath(), $"phantom-it-{Guid.NewGuid():N}");
 
     public async ValueTask InitializeAsync()
@@ -74,6 +76,8 @@ public sealed class PhantomApiFactory : WebApplicationFactory<Program>, IAsyncLi
             services.AddSingleton<IGeocodingService>(Geocoding);
             services.RemoveAll<IWeatherService>();
             services.AddSingleton<IWeatherService>(Weather);
+            services.RemoveAll<ITranscriptionService>();
+            services.AddSingleton<ITranscriptionService>(Transcription);
         });
     }
 

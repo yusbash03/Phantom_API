@@ -76,4 +76,29 @@ public sealed class Attachment
             CreatedAt = createdAt,
         };
     }
+
+    /// <summary>
+    /// Stores the automatic transcript of a voice recording (Requirement 6.11): a derived artefact kept beside the
+    /// original, which is never altered. Set once; later attempts keep the first transcript.
+    /// </summary>
+    public bool SetTranscript(string text, string provider, DateTimeOffset transcribedAt)
+    {
+        if (Kind != AttachmentKind.Audio)
+        {
+            throw new InvalidOperationException("Only voice recordings have transcripts.");
+        }
+
+        ArgumentException.ThrowIfNullOrWhiteSpace(text);
+        ArgumentException.ThrowIfNullOrWhiteSpace(provider);
+        if (TranscriptText is not null)
+        {
+            return false;
+        }
+
+        var trimmed = text.Trim();
+        TranscriptText = trimmed.Length <= MaxTranscriptLength ? trimmed : trimmed[..MaxTranscriptLength];
+        TranscriptProvider = provider.Length <= 100 ? provider : provider[..100];
+        TranscribedAt = transcribedAt;
+        return true;
+    }
 }

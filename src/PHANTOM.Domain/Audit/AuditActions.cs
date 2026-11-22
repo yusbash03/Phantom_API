@@ -25,6 +25,8 @@ public static class AuditActions
     public const string AiAnalysisCompleted = "ai_analysis.completed";
     public const string AiAnalysisFailed = "ai_analysis.failed";
     public const string AiAnalysisRetryRequested = "ai_analysis.retry_requested";
+    public const string AttachmentTranscribed = "attachment.transcribed";
+    public const string AttachmentTranscriptionFailed = "attachment.transcription_failed";
 
     public const string ResponderCreated = "responder.created";
     public const string ResponderUpdated = "responder.updated";

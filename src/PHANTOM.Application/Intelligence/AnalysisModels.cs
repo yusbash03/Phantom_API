@@ -28,4 +28,5 @@ public sealed record AnalysisResponse(
     AnalysisFailureCode? FailureCode,
     string? FailureMessage,
     UserRef? RequestedBy,
-    bool UsedImageInput);
+    bool UsedImageInput,
+    bool UsedAudioTranscript);

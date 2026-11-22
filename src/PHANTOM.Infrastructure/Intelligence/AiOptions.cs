@@ -27,6 +27,9 @@ public sealed class AiOptions
     /// <summary>Lets tests and tooling run the API without the background worker.</summary>
     public bool WorkerEnabled { get; set; } = true;
 
+    /// <summary>Requirement 6.11: transcribe voice recordings via Gemini audio input. Needs the Gemini provider and key.</summary>
+    public bool TranscriptionEnabled { get; set; } = true;
+
     public int PollIntervalSeconds { get; set; } = 10;
     public int StuckAfterMinutes { get; set; } = 5;
 

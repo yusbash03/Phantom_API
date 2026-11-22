@@ -3802,7 +3802,8 @@
           "failureCode",
           "failureMessage",
           "requestedBy",
-          "usedImageInput"
+          "usedImageInput",
+          "usedAudioTranscript"
         ],
         "type": "object",
         "properties": {
@@ -3913,6 +3914,9 @@
             ]
           },
           "usedImageInput": {
+            "type": "boolean"
+          },
+          "usedAudioTranscript": {
             "type": "boolean"
           }
         },
@@ -4241,7 +4245,10 @@
           "contentType",
           "sizeBytes",
           "originalFileName",
-          "createdAt"
+          "createdAt",
+          "transcript",
+          "transcriptProvider",
+          "transcribedAt"
         ],
         "type": "object",
         "properties": {
@@ -4265,8 +4272,28 @@
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "transcript": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "transcriptProvider": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "transcribedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
           }
-        }
+        },
+        "description": "A stored file. For a voice recording, `Transcript` is the automatic transcript (a derived artefact; the\noriginal recording is kept unchanged) with its provider and time, or null when not transcribed."
       },
       "AuditActorType": {
         "enum": [

@@ -25,6 +25,9 @@ public sealed record IntelligenceRequest(
     DateTimeOffset SubmittedAt)
 {
     public IReadOnlyList<IntelligenceImage> Images { get; init; } = [];
+
+    /// <summary>Automatic transcript of the report's voice recording, with contact details removed (6.8, 6.11).</summary>
+    public string? AudioTranscript { get; init; }
 }
 
 /// <summary>A photo from the report, as stored (JPEG, PNG or WebP).</summary>
@@ -72,8 +75,11 @@ public sealed record IntelligenceOutcome
     /// <summary>How many of the request's photos the provider actually received (0 for stand-ins that ignore them).</summary>
     public int ImagesUsed { get; private init; }
 
-    public static IntelligenceOutcome Success(string provider, string model, string rawJson, int imagesUsed = 0) =>
-        new(provider, model, rawJson, null, null) { ImagesUsed = Math.Max(0, imagesUsed) };
+    /// <summary>Whether the provider received the voice recording transcript (false for stand-ins that ignore input).</summary>
+    public bool TranscriptUsed { get; private init; }
+
+    public static IntelligenceOutcome Success(string provider, string model, string rawJson, int imagesUsed = 0, bool transcriptUsed = false) =>
+        new(provider, model, rawJson, null, null) { ImagesUsed = Math.Max(0, imagesUsed), TranscriptUsed = transcriptUsed };
 
     public static IntelligenceOutcome Failure(string provider, string model, AnalysisFailureCode code, string message) =>
         new(provider, model, null, code, message);

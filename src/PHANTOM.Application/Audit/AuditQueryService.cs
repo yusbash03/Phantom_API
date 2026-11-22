@@ -149,6 +149,9 @@ internal sealed class AuditQueryService(IPhantomDbContext db, IValidator<AuditSe
 
         var entityIds = new List<string> { incidentId.ToString() };
         entityIds.AddRange(context.Reports.Keys);
+        var reportIds = reports.Select(r => r.Id).ToList();
+        entityIds.AddRange((await db.Attachments.AsNoTracking().Where(a => reportIds.Contains(a.ReportId) && a.Kind == AttachmentKind.Audio)
+            .Select(a => a.Id).ToListAsync(cancellationToken)).Select(id => id.ToString()));
         entityIds.AddRange(analysisIds.Select(id => id.ToString()));
         entityIds.AddRange(context.Assignments.Keys);
         entityIds.AddRange(context.Relations.Keys);
@@ -361,10 +364,18 @@ internal sealed class AuditQueryService(IPhantomDbContext db, IValidator<AuditSe
             case AuditActions.AiAnalysisQueued:
                 return (TimelineEventKind.Ai, $"AI analysis queued (attempt {New("attempt")})", null, true);
             case AuditActions.AiAnalysisCompleted:
-                var photos = int.TryParse(New("imagesUsed"), out var used) && used > 0 ? $" Based on the report text and {used} photo{(used == 1 ? "" : "s")}." : string.Empty;
+                var photos = int.TryParse(New("imagesUsed"), out var used) && used > 0 ? $" {used} photo{(used == 1 ? "" : "s")}" : null;
+                var voice = New("transcriptUsed") == "True" ? " the voice recording transcript" : null;
+                var inputs = (photos, voice) switch
+                {
+                    (null, null) => string.Empty,
+                    ({ } p, null) => $" Based on the report text and{p}.",
+                    (null, { } v) => $" Based on the report text and{v}.",
+                    ({ } p, { } v) => $" Based on the report text,{p} and{v}.",
+                };
                 return (TimelineEventKind.Ai, $"AI recommended {New("recommendedSeverity")} severity and category {New("recommendedCategory")}",
                     (New("provider") == IntelligenceProviders.RecordedFixture ? "Recorded test fixture replayed, not an analysis of this report."
-                    : New("simulated") == "True" ? "Simulated output, not a real AI result." : "A recommendation only; approved values are set by a coordinator.") + photos, true);
+                    : New("simulated") == "True" ? "Simulated output, not a real AI result." : "A recommendation only; approved values are set by a coordinator.") + inputs, true);
             case AuditActions.AiAnalysisFailed:
                 return (TimelineEventKind.Ai, $"AI analysis failed ({New("failureCode")})", "The report and incident were not changed.", true);
             case AuditActions.AiAnalysisRetryRequested:
@@ -388,6 +399,10 @@ internal sealed class AuditQueryService(IPhantomDbContext db, IValidator<AuditSe
                 return (TimelineEventKind.Location, "Location could not be found automatically", New("reason"), false);
             case AuditActions.LocationVerified:
                 return (TimelineEventKind.Decision, "Location verified", New("text"), false);
+            case AuditActions.AttachmentTranscribed:
+                return (TimelineEventKind.Ai, "Voice recording transcribed automatically", $"By {New("provider")}. The original recording is kept unchanged.", true);
+            case AuditActions.AttachmentTranscriptionFailed:
+                return (TimelineEventKind.Ai, "Voice recording could not be transcribed", New("reason"), true);
             case AuditActions.RelationSuggested:
                 var score = decimal.TryParse(New("score"), NumberStyles.Float, CultureInfo.InvariantCulture, out var s) ? $" ({Math.Round(s * 100)}% match)" : string.Empty;
                 return (TimelineEventKind.Correlation, $"Possible duplicate of {otherIncident} suggested{score}", New("explanation"), false);

@@ -36,6 +36,7 @@ internal sealed class AnalysisService(
     ICurrentUser currentUser,
     IClock clock,
     IObjectStorage storage,
+    ITranscriptionService transcription,
     ILogger<AnalysisService> logger) : IAnalysisService
 {
     /// <summary>
@@ -62,7 +63,12 @@ internal sealed class AnalysisService(
             .FirstOrDefaultAsync(cancellationToken);
         if (report is not null)
         {
-            report = report with { Images = await LoadImagesAsync(analysis.ReportId, cancellationToken) };
+            var transcript = await EnsureTranscriptAsync(analysis.ReportId, cancellationToken);
+            report = report with
+            {
+                Images = await LoadImagesAsync(analysis.ReportId, cancellationToken),
+                AudioTranscript = transcript is null ? null : TranscriptRedaction.Redact(transcript),
+            };
         }
 
         var started = Stopwatch.GetTimestamp();
@@ -93,8 +99,9 @@ internal sealed class AnalysisService(
         {
             var result = parsed.Value;
             var imagesUsed = Math.Min(outcome.ImagesUsed, report?.Images.Count ?? 0);
+            var transcriptUsed = outcome.TranscriptUsed && !string.IsNullOrWhiteSpace(report?.AudioTranscript);
             analysis.Succeed(outcome.Provider, outcome.Model, IntelligenceResultParser.Serialize(result), result.Severity, result.Category, latencyMs, now,
-                usedImageInput: imagesUsed > 0);
+                usedImageInput: imagesUsed > 0, usedAudioTranscript: transcriptUsed);
             audit.RecordSystem(AuditActions.AiAnalysisCompleted, nameof(IncidentAnalysis), analysis.Id.ToString(),
                 newValue: new
                 {
@@ -108,6 +115,7 @@ internal sealed class AnalysisService(
                     latencyMs,
                     imagesUsed,
                     imageAttachmentIds = imagesUsed > 0 ? report!.Images.Take(imagesUsed).Select(i => i.AttachmentId).ToArray() : null,
+                    transcriptUsed,
                 });
             // Requirement 14.1: a newly Critical recommendation alerts coordinators (once, not on every retry).
             if (result.Severity == Severity.Critical)
@@ -150,6 +158,52 @@ internal sealed class AnalysisService(
             newValue: new { incidentId = analysis.IncidentId, attempt = analysis.Attempt, failureCode = code.ToString(), provider = outcome.Provider, model = outcome.Model, latencyMs });
         await db.SaveChangesAsync(cancellationToken);
         logger.LogWarning("Analysis {AnalysisId} for incident {IncidentId} failed: {FailureCode}", analysis.Id, analysis.IncidentId, code);
+    }
+
+    /// <summary>
+    /// The voice recording's transcript (Requirement 6.11). Transcribes on first use when a provider is configured
+    /// and stores the result on the attachment, beside the untouched original. A failure is audited and the
+    /// analysis continues on the text alone; the next attempt tries again.
+    /// </summary>
+    private async Task<string?> EnsureTranscriptAsync(Guid reportId, CancellationToken cancellationToken)
+    {
+        var recording = await db.Attachments
+            .Where(a => a.ReportId == reportId && a.Kind == AttachmentKind.Audio)
+            .OrderBy(a => a.CreatedAt)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (recording is null || recording.TranscriptText is not null || !transcription.IsConfigured)
+        {
+            return recording?.TranscriptText;
+        }
+
+        byte[] audio;
+        try
+        {
+            await using var stream = await storage.RetrieveAsync(recording.StorageKey, cancellationToken);
+            using var buffer = new MemoryStream();
+            await stream.CopyToAsync(buffer, cancellationToken);
+            audio = buffer.ToArray();
+        }
+        catch (Exception ex) when (ex is IOException or FileNotFoundException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            logger.LogWarning(ex, "Voice recording {AttachmentId} could not be read for transcription", recording.Id);
+            return null;
+        }
+
+        var outcome = await transcription.TranscribeAsync(recording.ContentType, audio, cancellationToken);
+        if (outcome.IsSuccess && recording.SetTranscript(outcome.Text!, outcome.Provider, clock.UtcNow))
+        {
+            audit.RecordSystem(AuditActions.AttachmentTranscribed, nameof(Attachment), recording.Id.ToString(),
+                newValue: new { reportId, provider = outcome.Provider, characters = recording.TranscriptText!.Length });
+        }
+        else if (!outcome.IsSuccess)
+        {
+            audit.RecordSystem(AuditActions.AttachmentTranscriptionFailed, nameof(Attachment), recording.Id.ToString(),
+                newValue: new { reportId, provider = outcome.Provider, reason = outcome.FailureMessage });
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+        return recording.TranscriptText;
     }
 
     /// <summary>
@@ -323,6 +377,6 @@ internal sealed class AnalysisService(
         }
 
         return new AnalysisResponse(a.Id, a.Attempt, reportReference, a.Status, a.Provider, a.Model, IntelligenceProviders.IsStandIn(a.Provider), a.SchemaVersion,
-            a.RequestedAt, a.CompletedAt, a.LatencyMs, a.RecommendedSeverity, a.RecommendedCategory, result, a.FailureCode, a.FailureMessage, requestedBy, a.UsedImageInput);
+            a.RequestedAt, a.CompletedAt, a.LatencyMs, a.RecommendedSeverity, a.RecommendedCategory, result, a.FailureCode, a.FailureMessage, requestedBy, a.UsedImageInput, a.UsedAudioTranscript);
     }
 }

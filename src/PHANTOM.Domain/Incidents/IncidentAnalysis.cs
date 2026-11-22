@@ -91,10 +91,11 @@ public sealed class IncidentAnalysis
     }
 
     public void Succeed(string provider, string model, string resultJson, Severity severity, IncidentCategory category, int latencyMs, DateTimeOffset completedAt,
-        bool usedImageInput = false)
+        bool usedImageInput = false, bool usedAudioTranscript = false)
     {
         EnsureProcessing();
         UsedImageInput = usedImageInput;
+        UsedAudioTranscript = usedAudioTranscript;
         ArgumentException.ThrowIfNullOrWhiteSpace(resultJson);
         Status = AnalysisStatus.Succeeded;
         Provider = Bound(provider, MaxProviderLength);

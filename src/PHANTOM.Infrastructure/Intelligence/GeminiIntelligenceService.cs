@@ -82,7 +82,7 @@ internal sealed class GeminiIntelligenceService(
                     return Failure(model, AnalysisFailureCode.ProviderError, $"The AI provider returned an error (HTTP {status}).");
                 }
 
-                return await ReadEnvelopeAsync(response, model, request.Images.Count, cancellationToken);
+                return await ReadEnvelopeAsync(response, model, request.Images.Count, !string.IsNullOrWhiteSpace(request.AudioTranscript), cancellationToken);
             }
         }
     }
@@ -119,7 +119,7 @@ internal sealed class GeminiIntelligenceService(
         return parts;
     }
 
-    private static async Task<IntelligenceOutcome> ReadEnvelopeAsync(HttpResponseMessage response, string model, int imagesSent, CancellationToken cancellationToken)
+    private static async Task<IntelligenceOutcome> ReadEnvelopeAsync(HttpResponseMessage response, string model, int imagesSent, bool transcriptSent, CancellationToken cancellationToken)
     {
         JsonNode? envelope;
         try
@@ -163,7 +163,7 @@ internal sealed class GeminiIntelligenceService(
 
         return text.Length == 0
             ? Failure(reportedModel, AnalysisFailureCode.InvalidOutput, "The AI provider returned an empty answer.")
-            : IntelligenceOutcome.Success(AiOptions.GeminiProvider, reportedModel, text.ToString(), imagesSent);
+            : IntelligenceOutcome.Success(AiOptions.GeminiProvider, reportedModel, text.ToString(), imagesSent, transcriptSent);
     }
 
     private Task DelayAsync(int attempt, TimeSpan? retryAfter, CancellationToken cancellationToken)
