@@ -11,6 +11,7 @@ using PHANTOM.Application.Incidents;
 using PHANTOM.Application.Intelligence;
 using PHANTOM.Application.Notifications;
 using PHANTOM.Application.Reporting.Intake;
+using PHANTOM.Application.Reports;
 using PHANTOM.Application.Responders;
 using PHANTOM.Application.Users;
 using PHANTOM.Application.Weather;
@@ -47,6 +48,7 @@ public static class DependencyInjection
         services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<IDashboardService, DashboardService>();
         services.AddScoped<IEnvironmentService, EnvironmentService>();
+        services.AddScoped<IReportService, ReportService>();
         return services;
     }
 }

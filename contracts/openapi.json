@@ -2798,6 +2798,107 @@
         }
       }
     },
+    "/api/v1/reports/summary": {
+      "get": {
+        "tags": [
+          "Reports"
+        ],
+        "parameters": [
+          {
+            "name": "From",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "To",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportSummary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reports/summary.csv": {
+      "get": {
+        "tags": [
+          "Reports"
+        ],
+        "summary": "The same summary as CSV: one row per figure (section, item, value, sample_size).",
+        "parameters": [
+          {
+            "name": "From",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "To",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileContentResult"
+                }
+              },
+              "application/problem+json": { }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/responders": {
       "get": {
         "tags": [
@@ -3774,6 +3875,42 @@
         },
         "description": "A recent change to any incident, worded as on the incident timeline (Requirement 12.3)."
       },
+      "AiAgreement": {
+        "required": [
+          "compared",
+          "agreed",
+          "aiHigher",
+          "aiLower",
+          "rate"
+        ],
+        "type": "object",
+        "properties": {
+          "compared": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "agreed": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "aiHigher": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "aiLower": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "rate": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          }
+        },
+        "description": "How often the AI's recommended severity matched the coordinator's approved severity, over incidents that have\nboth. AiHigher/AiLower say which way it differed."
+      },
       "AnalysisFailureCode": {
         "enum": [
           "Timeout",
@@ -4481,6 +4618,22 @@
         },
         "description": "Signal breakdown stored with a suggestion and shown to coordinators."
       },
+      "CountItem": {
+        "required": [
+          "key",
+          "count"
+        ],
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "count": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
       "CreateResponderRequest": {
         "required": [
           "callSign",
@@ -4632,6 +4785,27 @@
           }
         },
         "description": "The command dashboard's headline numbers (Requirement 12.1). Every value is counted from the database\nwhen requested (12.2); nothing is cached or stored."
+      },
+      "DurationStat": {
+        "required": [
+          "medianSeconds",
+          "sampleSize"
+        ],
+        "type": "object",
+        "properties": {
+          "medianSeconds": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "sampleSize": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "description": "A median duration and how many incidents it was computed from (null when there were none)."
       },
       "EditIncidentRequest": {
         "required": [
@@ -4809,6 +4983,47 @@
           },
           "value": {
             "type": "string"
+          }
+        }
+      },
+      "FileContentResult": {
+        "type": "object",
+        "properties": {
+          "fileContents": {
+            "type": "string",
+            "format": "byte"
+          },
+          "contentType": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "fileDownloadName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "lastModified": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "entityTag": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/EntityTagHeaderValue"
+              }
+            ]
+          },
+          "enableRangeProcessing": {
+            "type": "boolean"
           }
         }
       },
@@ -6189,6 +6404,71 @@
           "Unrelated"
         ]
       },
+      "ReportSummary": {
+        "required": [
+          "from",
+          "to",
+          "totalIncidents",
+          "byCategory",
+          "bySeverity",
+          "byStatus",
+          "reportToVerification",
+          "reportToFirstAcknowledgement",
+          "reportToResolution",
+          "aiSeverityAgreement",
+          "generatedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "to": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "totalIncidents": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "byCategory": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CountItem"
+            }
+          },
+          "bySeverity": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CountItem"
+            }
+          },
+          "byStatus": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CountItem"
+            }
+          },
+          "reportToVerification": {
+            "$ref": "#/components/schemas/DurationStat"
+          },
+          "reportToFirstAcknowledgement": {
+            "$ref": "#/components/schemas/DurationStat"
+          },
+          "reportToResolution": {
+            "$ref": "#/components/schemas/DurationStat"
+          },
+          "aiSeverityAgreement": {
+            "$ref": "#/components/schemas/AiAgreement"
+          },
+          "generatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "description": "Requirement 16.1. Every value is computed from the database when requested (16.2)."
+      },
       "ResolveIncidentRequest": {
         "required": [
           "resolutionSummary",
@@ -6873,6 +7153,9 @@
     },
     {
       "name": "Relations"
+    },
+    {
+      "name": "Reports"
     },
     {
       "name": "Responders"
