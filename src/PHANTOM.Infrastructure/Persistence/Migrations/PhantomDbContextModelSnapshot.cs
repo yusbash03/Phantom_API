@@ -1075,6 +1075,35 @@ namespace PHANTOM.Infrastructure.Persistence.Migrations
                     b.ToTable("responders", (string)null);
                 });
 
+            modelBuilder.Entity("PHANTOM.Domain.Settings.AppSetting", b =>
+                {
+                    b.Property<string>("Key")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("key");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by_id");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("value");
+
+                    b.HasKey("Key")
+                        .HasName("pk_app_settings");
+
+                    b.HasIndex("UpdatedById")
+                        .HasDatabaseName("ix_app_settings_updated_by_id");
+
+                    b.ToTable("app_settings", (string)null);
+                });
+
             modelBuilder.Entity("PHANTOM.Domain.Weather.EnvironmentalSnapshot", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1354,6 +1383,15 @@ namespace PHANTOM.Infrastructure.Persistence.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_responders_users_user_id");
+                });
+
+            modelBuilder.Entity("PHANTOM.Domain.Settings.AppSetting", b =>
+                {
+                    b.HasOne("PHANTOM.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("UpdatedById")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_app_settings_users_updated_by_id");
                 });
 
             modelBuilder.Entity("PHANTOM.Domain.Weather.EnvironmentalSnapshot", b =>

@@ -26,6 +26,7 @@ public interface IPhantomDbContext
     DbSet<IncidentUpdate> IncidentUpdates { get; }
     DbSet<Notification> Notifications { get; }
     DbSet<PHANTOM.Domain.Weather.EnvironmentalSnapshot> EnvironmentalSnapshots { get; }
+    DbSet<PHANTOM.Domain.Settings.AppSetting> AppSettings { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

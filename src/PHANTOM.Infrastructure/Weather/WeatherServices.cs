@@ -63,7 +63,8 @@ internal static class OpenMeteoParser
 /// Open-Meteo forecast API, current conditions (design §7). No key. Successful readings are cached per rounded
 /// coordinate (9.4); failures are not, so the next attempt asks again.
 /// </summary>
-internal sealed partial class OpenMeteoWeatherService(HttpClient http, IMemoryCache cache, IOptions<WeatherOptions> options, TimeProvider time, ILogger<OpenMeteoWeatherService> logger) : IWeatherService
+internal sealed partial class OpenMeteoWeatherService(HttpClient http, IMemoryCache cache, IOptions<WeatherOptions> options, TimeProvider time, ILogger<OpenMeteoWeatherService> logger,
+    PHANTOM.Application.Settings.IOperationalSettings? operational = null) : IWeatherService
 {
     public const string ProviderName = "Open-Meteo";
 
@@ -96,7 +97,12 @@ internal sealed partial class OpenMeteoWeatherService(HttpClient http, IMemoryCa
             }
 
             var outcome = WeatherOutcome.Success(ProviderName, reading, time.GetUtcNow());
-            cache.Set(key, outcome, TimeSpan.FromMinutes(settings.CacheMinutes));
+            // The cache duration is an administrator setting (Requirement 17.1); configuration is the default.
+            var minutes = operational is null ? settings.CacheMinutes : (await operational.GetAsync(cancellationToken)).WeatherCacheMinutes;
+            if (minutes > 0)
+            {
+                cache.Set(key, outcome, TimeSpan.FromMinutes(minutes));
+            }
             return outcome;
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)

@@ -12,6 +12,7 @@ using PHANTOM.Application.Intelligence;
 using PHANTOM.Application.Notifications;
 using PHANTOM.Application.Reporting.Intake;
 using PHANTOM.Application.Reports;
+using PHANTOM.Application.Settings;
 using PHANTOM.Application.Responders;
 using PHANTOM.Application.Users;
 using PHANTOM.Application.Weather;
@@ -49,6 +50,15 @@ public static class DependencyInjection
         services.AddScoped<IDashboardService, DashboardService>();
         services.AddScoped<IEnvironmentService, EnvironmentService>();
         services.AddScoped<IReportService, ReportService>();
+
+        // Requirement 17: administrator-adjustable values; configuration supplies the defaults.
+        services.AddMemoryCache();
+        services.AddSingleton(sp => new SettingsDefaults(
+            sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<CorrelationOptions>>(),
+            configuration.GetValue<int?>("Weather:CacheMinutes") ?? 15));
+        services.AddSingleton<OperationalSettingsProvider>();
+        services.AddSingleton<IOperationalSettings>(sp => sp.GetRequiredService<OperationalSettingsProvider>());
+        services.AddScoped<ISettingsService, SettingsService>();
         return services;
     }
 }

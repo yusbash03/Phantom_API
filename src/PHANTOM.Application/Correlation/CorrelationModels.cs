@@ -6,7 +6,7 @@ using Severity = PHANTOM.Domain.Incidents.Severity;
 
 namespace PHANTOM.Application.Correlation;
 
-/// <summary>Configuration section <c>Correlation</c>. Defaults are design §6; an admin settings screen comes with task 34.</summary>
+/// <summary>Configuration section <c>Correlation</c>: the defaults (design §6). Administrators override them in Settings (task 34).</summary>
 public sealed class CorrelationOptions
 {
     public const string SectionName = "Correlation";

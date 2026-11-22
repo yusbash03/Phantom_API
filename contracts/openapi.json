@@ -3495,6 +3495,83 @@
         }
       }
     },
+    "/api/v1/settings": {
+      "get": {
+        "tags": [
+          "Settings"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Settings"
+        ],
+        "summary": "Changes take effect within 30 seconds and are audited with the values before and after.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSettingsRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSettingsRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSettingsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/users": {
       "get": {
         "tags": [
@@ -5984,6 +6061,59 @@
         ],
         "description": "What happened (Requirement 14.1). Values are persisted; never rename."
       },
+      "OperationalSettings": {
+        "required": [
+          "geoWeight",
+          "timeWeight",
+          "categoryWeight",
+          "textWeight",
+          "locationWeight",
+          "geoRadiusMeters",
+          "windowHours",
+          "suggestThreshold",
+          "weatherCacheMinutes"
+        ],
+        "type": "object",
+        "properties": {
+          "geoWeight": {
+            "type": "number",
+            "format": "double"
+          },
+          "timeWeight": {
+            "type": "number",
+            "format": "double"
+          },
+          "categoryWeight": {
+            "type": "number",
+            "format": "double"
+          },
+          "textWeight": {
+            "type": "number",
+            "format": "double"
+          },
+          "locationWeight": {
+            "type": "number",
+            "format": "double"
+          },
+          "geoRadiusMeters": {
+            "type": "number",
+            "format": "double"
+          },
+          "windowHours": {
+            "type": "number",
+            "format": "double"
+          },
+          "suggestThreshold": {
+            "type": "number",
+            "format": "double"
+          },
+          "weatherCacheMinutes": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "description": "The values administrators may change (Requirement 17.1). This explicit list is the whole surface of the\nsettings API, so nothing else, and no secret, can be read or written through it (17.3)."
+      },
       "PagedResultOfAuditEntryResponse": {
         "required": [
           "items",
@@ -6636,6 +6766,45 @@
         },
         "description": "Only Available or Unavailable; Assigned is derived from an active assignment."
       },
+      "SettingsResponse": {
+        "required": [
+          "values",
+          "defaults",
+          "isCustomised",
+          "updatedBy",
+          "updatedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "values": {
+            "$ref": "#/components/schemas/OperationalSettings"
+          },
+          "defaults": {
+            "$ref": "#/components/schemas/OperationalSettings"
+          },
+          "isCustomised": {
+            "type": "boolean"
+          },
+          "updatedBy": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UserRef"
+              }
+            ]
+          },
+          "updatedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        },
+        "description": "Current values, the configured defaults, whether they differ, and who last changed them."
+      },
       "Severity": {
         "enum": [
           "Low",
@@ -6833,6 +7002,26 @@
             "format": "int32"
           }
         }
+      },
+      "UpdateSettingsRequest": {
+        "required": [
+          "values",
+          "expectedUpdatedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "values": {
+            "$ref": "#/components/schemas/OperationalSettings"
+          },
+          "expectedUpdatedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        },
+        "description": "`ExpectedUpdatedAt` is the `UpdatedAt` the administrator saw (null if never changed): a stale save is refused."
       },
       "UpdateUserRolesRequest": {
         "required": [
@@ -7159,6 +7348,9 @@
     },
     {
       "name": "Responders"
+    },
+    {
+      "name": "Settings"
     },
     {
       "name": "Users"

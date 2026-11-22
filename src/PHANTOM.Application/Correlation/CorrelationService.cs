@@ -39,6 +39,7 @@ public interface ICorrelationService
 internal sealed class CorrelationService(
     IPhantomDbContext db,
     IOptions<CorrelationOptions> options,
+    PHANTOM.Application.Settings.IOperationalSettings operationalSettings,
     ICurrentUser currentUser,
     IAuditWriter audit,
     IClock clock,
@@ -69,7 +70,8 @@ internal sealed class CorrelationService(
 
     public async Task<int> CorrelateAsync(Guid incidentId, CancellationToken cancellationToken)
     {
-        var settings = options.Value.ToSettings();
+        // Administrators can change these at run time (Requirement 17.1); MaxCandidates stays configuration.
+        var settings = (await operationalSettings.GetAsync(cancellationToken)).ToCorrelation(options.Value.MaxCandidates);
         var subject = await Rows().FirstOrDefaultAsync(r => r.Id == incidentId, cancellationToken);
         if (subject is null || IncidentStatusPolicy.IsTerminal(subject.Status))
         {

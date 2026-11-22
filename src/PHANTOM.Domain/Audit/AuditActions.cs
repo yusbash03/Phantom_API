@@ -9,6 +9,7 @@ public static class AuditActions
     public const string RefreshTokenReuseDetected = "auth.refresh_token_reuse_detected";
 
     public const string UserCreated = "user.created";
+    public const string SettingsChanged = "settings.changed";
     public const string UserRolesChanged = "user.roles_changed";
     public const string UserDeactivated = "user.deactivated";
     public const string UserActivated = "user.activated";
