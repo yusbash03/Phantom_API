@@ -7,7 +7,7 @@ using PHANTOM.Domain.Incidents;
 namespace PHANTOM.Infrastructure.Intelligence;
 
 /// <summary>Provider-neutral prompt and output schema for <c>phantom.intel.v1</c>.</summary>
-internal static class IntelligencePrompt
+internal static partial class IntelligencePrompt
 {
     public const string SystemInstruction =
         """
@@ -103,8 +103,9 @@ internal static class IntelligencePrompt
         };
     }
 
-    /// <summary>Stops report text from closing the data block early.</summary>
-    private static string Neutralise(string value) =>
-        value.Replace("<report>", "(report)", StringComparison.OrdinalIgnoreCase)
-             .Replace("</report>", "(/report)", StringComparison.OrdinalIgnoreCase);
+    /// <summary>Stops report text from opening or closing the data block, including spaced variants like "&lt; /report &gt;".</summary>
+    private static string Neutralise(string value) => ReportTag().Replace(value, m => m.Value.Contains('/', StringComparison.Ordinal) ? "(/report)" : "(report)");
+
+    [System.Text.RegularExpressions.GeneratedRegex(@"<\s*/?\s*report\b[^>]*>", System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.CultureInvariant)]
+    private static partial System.Text.RegularExpressions.Regex ReportTag();
 }

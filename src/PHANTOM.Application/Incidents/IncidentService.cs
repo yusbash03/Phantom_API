@@ -355,6 +355,28 @@ internal sealed class IncidentService(
             return result;
         });
 
+    /// <summary>
+    /// The saved file name is ours, never the reporter's: an extension chosen by the public (".html", ".exe") must
+    /// not decide how a coordinator's computer opens the file. The original name is shown in the UI only.
+    /// </summary>
+    internal static string DownloadName(Attachment attachment)
+    {
+        var extension = attachment.ContentType switch
+        {
+            "image/jpeg" => "jpg",
+            "image/png" => "png",
+            "image/webp" => "webp",
+            "audio/webm" => "webm",
+            "audio/ogg" => "ogg",
+            "audio/mpeg" => "mp3",
+            "audio/wav" => "wav",
+            "audio/mp4" => "m4a",
+            _ => "bin",
+        };
+        var kind = attachment.Kind == AttachmentKind.Audio ? "recording" : "photo";
+        return $"phantom-{kind}-{attachment.Id.ToString("N")[..12]}.{extension}";
+    }
+
     public async Task<Result<AttachmentContent>> GetAttachmentContentAsync(Guid attachmentId, CancellationToken cancellationToken)
     {
         var attachment = await db.Attachments.AsNoTracking().FirstOrDefaultAsync(a => a.Id == attachmentId, cancellationToken);
@@ -366,7 +388,7 @@ internal sealed class IncidentService(
         try
         {
             var content = await objectStorage.RetrieveAsync(attachment.StorageKey, cancellationToken);
-            return new AttachmentContent(content, attachment.ContentType, attachment.OriginalFileName);
+            return new AttachmentContent(content, attachment.ContentType, DownloadName(attachment));
         }
         catch (FileNotFoundException ex)
         {

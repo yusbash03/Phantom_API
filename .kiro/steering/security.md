@@ -50,8 +50,8 @@ Implementing these controls does not make PHANTOM certified or compliant. Never 
 
 ## Secrets and configuration
 
-- All secrets via environment variables (`Ai__ApiKey`, `Mapbox__SecretToken`, `Jwt__SigningKey`,
-  `ConnectionStrings__Phantom`). Local development uses `dotnet user-secrets` or an untracked `.env`.
+- All secrets via environment variables (`Ai__ApiKey`, `Mapbox__AccessToken` (server-side token), `Jwt__SigningKey`,
+  `ConnectionStrings__Phantom`, optional `Privacy__IpHashKey`). Local development uses `dotnet user-secrets` or an untracked `.env`.
 - `.env.example` files contain placeholders only. `.gitignore` must exclude `.env*` except `.env.example`.
 - The Mapbox token used in the browser is a separate, URL-restricted public token.
 

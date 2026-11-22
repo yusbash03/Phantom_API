@@ -46,9 +46,10 @@ public sealed class VoiceTests(PhantomApiFactory factory)
         Assert.Equal(ScriptedTranscriptionService.ProviderName, attachment.GetProperty("transcriptProvider").GetString());
         Assert.NotEqual(JsonValueKind.Null, attachment.GetProperty("transcribedAt").ValueKind);
 
-        // The original recording is untouched.
-        var download = await staff.GetByteArrayAsync($"/api/v1/attachments/{attachment.GetProperty("id").GetString()}/content", Ct);
-        Assert.Equal(SHA256.HashData(recording), SHA256.HashData(download));
+        // The original recording is untouched, and is saved under our name, not one the reporter chose.
+        var response = await staff.GetAsync($"/api/v1/attachments/{attachment.GetProperty("id").GetString()}/content", Ct);
+        Assert.Matches("^phantom-recording-[0-9a-f]{12}\\.webm$", response.Content.Headers.ContentDisposition?.FileNameStar ?? response.Content.Headers.ContentDisposition?.FileName?.Trim('"'));
+        Assert.Equal(SHA256.HashData(recording), SHA256.HashData(await response.Content.ReadAsByteArrayAsync(Ct)));
 
         var timeline = await staff.GetFromJsonAsync<JsonElement>($"/api/v1/incidents/{incidentId}/timeline", Ct);
         var transcribed = timeline.EnumerateArray().Single(e => e.GetProperty("action").GetString() == AuditActions.AttachmentTranscribed);
@@ -91,8 +92,10 @@ public sealed class VoiceTests(PhantomApiFactory factory)
         Assert.Contains("did not respond", failed.GetProperty("detail").GetString(), StringComparison.Ordinal);
     }
 
-    /// <summary>A file that passes the WebM content-signature check; the payload carries the test marker.</summary>
-    private static byte[] WebM(string marker) => [0x1A, 0x45, 0xDF, 0xA3, .. Encoding.ASCII.GetBytes($" voice note {marker} {Guid.NewGuid():N}")];
+    /// <summary>A WebM EBML header (DocType "webm", as browsers record) followed by a payload carrying the test marker.</summary>
+    private static byte[] WebM(string marker) =>
+        [0x1A, 0x45, 0xDF, 0xA3, 0x9F, 0x42, 0x86, 0x81, 0x01, 0x42, 0xF7, 0x81, 0x01, 0x42, 0xF2, 0x81, 0x04, 0x42, 0xF3, 0x81, 0x08,
+         0x42, 0x82, 0x84, .. "webm"u8, 0x42, 0x87, 0x81, 0x04, .. Encoding.ASCII.GetBytes($" voice note {marker} {Guid.NewGuid():N}")];
 
     private static Task<JsonElement> WaitForSucceededAsync(HttpClient staff, Guid incidentId, int attempt = 1) =>
         WaitForFinishedAsync(staff, incidentId, "Succeeded", attempt);

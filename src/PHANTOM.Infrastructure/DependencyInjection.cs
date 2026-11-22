@@ -45,6 +45,7 @@ public static class DependencyInjection
         services.TryAddSingleton<IRealtimePublisher, NullRealtimePublisher>();
         services.AddSingleton<RealtimeChangeInterceptor>();
         services.AddScoped<IPhantomDbContext>(sp => sp.GetRequiredService<PhantomDbContext>());
+        services.AddScoped<IExclusiveSection, PostgresExclusiveSection>();
 
         services.AddOptions<JwtOptions>()
             .Bind(configuration.GetSection(JwtOptions.SectionName))
@@ -56,6 +57,7 @@ public static class DependencyInjection
 
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton<IClock, SystemClock>();
+        services.AddSingleton<IClientIpHasher, Identity.HmacClientIpHasher>();
         services.AddSingleton<IPasswordHasher, PasswordHasherAdapter>();
         services.AddSingleton<ITokenService, JwtTokenService>();
         services.AddSingleton<IFileInspector, MagicByteFileInspector>();
@@ -171,10 +173,12 @@ public static class DependencyInjection
         else
         {
             services.AddHttpClient<IWeatherService, OpenMeteoWeatherService>((sp, http) =>
-            {
-                http.BaseAddress = sp.GetRequiredService<IOptions<WeatherOptions>>().Value.BaseUrl;
-                http.Timeout = Timeout.InfiniteTimeSpan; // per-call timeout is enforced by the service
-            });
+                {
+                    http.BaseAddress = sp.GetRequiredService<IOptions<WeatherOptions>>().Value.BaseUrl;
+                    http.Timeout = Timeout.InfiniteTimeSpan; // per-call timeout is enforced by the service
+                })
+                // The request URL carries an incident's (rounded) coordinates; keep them out of the logs.
+                .RemoveAllLoggers();
         }
 
         if (weather.WorkerEnabled)

@@ -27,6 +27,7 @@ public sealed class ReportIntakeService(
     IGeocodingSignal geocodingSignal,
     ICorrelationService correlation,
     IClock clock,
+    IClientIpHasher ipHasher,
     ILogger<ReportIntakeService> logger) : IReportIntakeService
 {
     public const long MaxFileSizeBytes = 10 * 1024 * 1024;
@@ -36,7 +37,6 @@ public sealed class ReportIntakeService(
     public static readonly TimeSpan IdempotencyWindow = TimeSpan.FromHours(24);
 
     private const string FilesField = "files";
-    private const int SniffBytes = 16;
     private static readonly string[] ImageMimeTypes = ["image/jpeg", "image/png", "image/webp"];
 
     public async Task<Result<SubmitReportResponse>> SubmitAsync(SubmitReportRequest request, CancellationToken cancellationToken = default)
@@ -103,7 +103,7 @@ public sealed class ReportIntakeService(
                 Blank(request.ReporterEmail),
                 now,
                 idempotencyKey,
-                HashClientIp(request.ClientIp));
+                ipHasher.Hash(request.ClientIp));
             var analysis = IncidentAnalysis.CreatePending(Guid.CreateVersion7(), incident.Id, report.Id, attempt: 1, now);
 
             db.Incidents.Add(incident);
@@ -249,7 +249,8 @@ public sealed class ReportIntakeService(
             }
 
             // The client's file name and Content-Type are ignored; only the content signature counts.
-            var contentType = fileInspector.DetectAllowedMimeType(bytes.AsSpan(0, Math.Min(bytes.Length, SniffBytes)));
+            // The whole file (at most 10 MB) is inspected: audio is checked for frame structure, not just a prefix.
+            var contentType = fileInspector.DetectAllowedMimeType(bytes);
             if (contentType is null)
             {
                 return FileError("report.file_type_not_allowed",
@@ -331,18 +332,6 @@ public sealed class ReportIntakeService(
         Error.Validation(code, message) with { Fields = new Dictionary<string, string[]> { [FilesField] = [message] } };
 
     private static string? Blank(string? value) => string.IsNullOrWhiteSpace(value) ? null : value;
-
-    private static string? HashClientIp(string? ip)
-    {
-        if (string.IsNullOrWhiteSpace(ip))
-        {
-            return null;
-        }
-
-        // For abuse analysis only; the raw address is never stored.
-        const string salt = "phantom-ip-hash-salt";
-        return Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(salt + ip)));
-    }
 
     private static string SanitiseFileName(string? name)
     {

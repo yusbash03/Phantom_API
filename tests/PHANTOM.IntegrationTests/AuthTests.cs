@@ -83,6 +83,26 @@ public sealed class AuthTests(PhantomApiFactory factory)
     }
 
     [Fact]
+    public async Task A_session_cannot_be_kept_alive_by_refreshing_beyond_its_absolute_lifetime()
+    {
+        var user = await factory.CreateUserAsync(Role.ResponderId);
+        var login = await factory.LoginAsync(user.Email);
+        var rotated = await RefreshAsync(login.RefreshCookie!);
+        Assert.Equal(HttpStatusCode.OK, rotated.StatusCode);
+
+        // Pretend the session began 31 days ago (the default cap is 30); each token on its own is still valid.
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<PhantomDbContext>();
+            await db.Database.ExecuteSqlAsync(
+                $"UPDATE refresh_tokens SET created_at = now() - interval '31 days' WHERE user_id = {user.Id} AND revoked_at IS NOT NULL",
+                TestContext.Current.CancellationToken);
+        }
+
+        Assert.Equal(HttpStatusCode.Unauthorized, (await RefreshAsync(CookieFrom(rotated)!)).StatusCode);
+    }
+
+    [Fact]
     public async Task Refresh_rereads_roles_from_the_database()
     {
         var user = await factory.CreateUserAsync(Role.ResponderId);

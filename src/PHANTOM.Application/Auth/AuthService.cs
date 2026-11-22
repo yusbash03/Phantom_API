@@ -24,6 +24,8 @@ internal sealed class AuthService(
     IAuditWriter audit,
     IClock clock,
     IOptions<AuthOptions> options,
+    ILoginThrottle throttle,
+    ICurrentUser currentUser,
     ILogger<AuthService> logger) : IAuthService
 {
     // Deliberately identical for unknown email, wrong password and inactive account (no enumeration).
@@ -48,8 +50,10 @@ internal sealed class AuthService(
             return await FailLoginAsync(null, "unknown_account", cancellationToken);
         }
 
-        if (await IsThrottledAsync(user.Id, cancellationToken))
+        var client = currentUser.IpAddress;
+        if (throttle.IsBlocked(user.Id, client))
         {
+            // Refused without counting, so a block from one client cannot be kept alive indefinitely.
             passwordHasher.SimulateVerification(password);
             return await FailLoginAsync(user.Id, "throttled", cancellationToken);
         }
@@ -57,6 +61,7 @@ internal sealed class AuthService(
         var check = passwordHasher.Verify(user, user.PasswordHash, password);
         if (check == PasswordCheck.Failed)
         {
+            throttle.RecordFailure(user.Id, client);
             return await FailLoginAsync(user.Id, "wrong_password", cancellationToken);
         }
 
@@ -65,6 +70,7 @@ internal sealed class AuthService(
             return await FailLoginAsync(user.Id, "inactive_account", cancellationToken);
         }
 
+        throttle.Reset(user.Id, client);
         var now = clock.UtcNow;
         var session = IssueSession(user, Guid.CreateVersion7(), now);
         audit.Record(AuditActions.LoginSucceeded, nameof(User), user.Id.ToString());
@@ -110,6 +116,16 @@ internal sealed class AuthService(
 
         if (!existing.IsUsable(now))
         {
+            return InvalidSession;
+        }
+
+        // Rotation issues a fresh lifetime each time, so cap the whole family: a session started more than
+        // AbsoluteSessionLifetimeDays ago must sign in again, even if it refreshed regularly.
+        var familyStarted = await db.RefreshTokens.Where(t => t.FamilyId == existing.FamilyId).MinAsync(t => t.CreatedAt, cancellationToken);
+        if (now - familyStarted > TimeSpan.FromDays(options.Value.AbsoluteSessionLifetimeDays))
+        {
+            await RevokeFamilyAsync(existing.FamilyId, now, "session_lifetime_exceeded", cancellationToken);
+            await db.SaveChangesAsync(cancellationToken);
             return InvalidSession;
         }
 
@@ -185,16 +201,6 @@ internal sealed class AuthService(
         audit.Record(AuditActions.LoginFailed, nameof(User), userId?.ToString(), metadata: new { reason });
         await db.SaveChangesAsync(cancellationToken);
         return InvalidCredentials;
-    }
-
-    private async Task<bool> IsThrottledAsync(Guid userId, CancellationToken cancellationToken)
-    {
-        var settings = options.Value;
-        var since = clock.UtcNow.AddMinutes(-settings.FailedLoginWindowMinutes);
-        var entityId = userId.ToString();
-        var failures = await db.AuditLogs.CountAsync(
-            a => a.Action == AuditActions.LoginFailed && a.EntityId == entityId && a.OccurredAt >= since, cancellationToken);
-        return failures >= settings.MaxFailedLoginsPerAccount;
     }
 
     private async Task RevokeFamilyAsync(Guid familyId, DateTimeOffset now, string reason, CancellationToken cancellationToken)

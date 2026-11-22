@@ -26,6 +26,8 @@ public static class DependencyInjection
         services.AddOptions<AuthOptions>()
             .Bind(configuration.GetSection(AuthOptions.SectionName))
             .Validate(o => o.RefreshTokenLifetimeDays is >= 1 and <= 30, "Auth:RefreshTokenLifetimeDays must be 1-30.")
+            .Validate(o => o.AbsoluteSessionLifetimeDays is >= 1 and <= 90 && o.AbsoluteSessionLifetimeDays >= o.RefreshTokenLifetimeDays,
+                "Auth:AbsoluteSessionLifetimeDays must be 1-90 and at least the refresh token lifetime.")
             .ValidateOnStart();
 
         services.AddOptions<CorrelationOptions>()
@@ -37,6 +39,7 @@ public static class DependencyInjection
         services.AddScoped<IAuditWriter, AuditWriter>();
         services.AddScoped<IAuditQueryService, AuditQueryService>();
         services.AddScoped<IAuthService, AuthService>();
+        services.AddSingleton<ILoginThrottle, LoginThrottle>();
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IReportIntakeService, ReportIntakeService>();
         services.AddScoped<IIncidentService, IncidentService>();

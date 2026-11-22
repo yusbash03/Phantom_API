@@ -194,7 +194,29 @@ Do not start a Phase 3 feature while the previous one has unresolved critical fa
 
 ## Phase 4 — Quality and delivery
 
-- [ ] 35. Security review (phantom-security-reviewer agent) of auth, uploads, IDOR, CORS, headers, secrets; fix findings
+- [x] 35. Security review (phantom-security-reviewer agent) of auth, uploads, IDOR, CORS, headers, secrets; fix findings
+  - Done 2026-11-22: two read-only reviews ran with the phantom-security-reviewer brief, one per repo. Every finding was checked in the code before fixing. Full record: `docs/security-review.md`. No Critical or High findings. Dependency checks were clean (NuGet: no vulnerable packages; npm audit: 0).
+  - Fixed, with tests:
+    - Downloads now use server-generated names, and audio is checked structurally (MP3 frames, WebM DocType, MP4 brands).
+    - Login throttling is per (account, client) and refused attempts don't count, so one client can't lock out a staff account.
+    - Image decode pixel cap and concurrency are bounded.
+    - Reporter IPs use a keyed HMAC.
+    - Administrator role changes and deactivation are serialised by an advisory lock.
+    - Sessions have an absolute 30-day lifetime.
+    - Open-Meteo URLs are kept out of logs.
+    - Prompt delimiter neutralising is regex-based.
+    - Page numbers are clamped.
+    - The env docs name `Mapbox__AccessToken`.
+    - SPA: sign-out disowns in-flight refreshes; reporter `tel:`/`mailto:` links only for valid values; the live connection ends the session when refresh fails; the third-party `cn` package was replaced by the local helper.
+  - Open for task 37 (deployment configuration):
+    - Audit-log role separation (runtime role INSERT/SELECT only).
+    - Forwarded-headers trust behind the load balancer.
+    - Proxy logs must not record the hub's `access_token`.
+    - CSP and headers on the SPA host.
+    - AllowedHosts.
+    - Don't publish Playwright traces.
+  - Accepted residual risk: sequential public references (coarse status only, rate-limited); up to 15 minutes of access-token validity after deactivation; names in report text can reach the AI; in-memory login throttle (single instance).
+  - Verification: 201 unit tests (2 live skipped) and 150 integration tests (stable over 3 runs), 117 Vitest, and the voice and auth Playwright specs (10/10, including a real Chromium WebM recording passing the stricter audio check). The full Playwright suite was still running at commit time.
 - [ ] 36. Responsive and accessibility pass; loading/empty/error coverage audit
 - [ ] 37. Deployment: Dockerfile, Render (or Azure) service, managed PostgreSQL, migration bundle release step, R2 storage, Vercel with rewrites, environment variables, CORS; verify `/health/ready` publicly
 - [ ] 38. Demo data for judging deployment (labelled) and recorded weather/AI fixtures (labelled)

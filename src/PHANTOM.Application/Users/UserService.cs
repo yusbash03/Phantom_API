@@ -25,7 +25,8 @@ internal sealed class UserService(
     IAuditWriter audit,
     IClock clock,
     IValidator<CreateUserRequest> createValidator,
-    IValidator<UpdateUserRolesRequest> rolesValidator) : IUserService
+    IValidator<UpdateUserRolesRequest> rolesValidator,
+    IExclusiveSection exclusive) : IUserService
 {
     private static readonly Error NotFound = Error.NotFound("user.not_found", "User not found.");
     private static readonly Error LastAdministrator =
@@ -101,7 +102,19 @@ internal sealed class UserService(
         return await GetAsync(user.Id, cancellationToken);
     }
 
-    public async Task<Result<UserResponse>> SetRolesAsync(Guid id, UpdateUserRolesRequest request, CancellationToken cancellationToken)
+    /// <summary>
+    /// Role changes and deactivations run one at a time (advisory lock), so two administrators demoting or
+    /// deactivating each other at the same moment cannot leave the system without an active administrator.
+    /// </summary>
+    private const string AdministratorsLock = "users:administrators";
+
+    public Task<Result<UserResponse>> SetRolesAsync(Guid id, UpdateUserRolesRequest request, CancellationToken cancellationToken) =>
+        exclusive.RunAsync(AdministratorsLock, ct => SetRolesCoreAsync(id, request, ct), cancellationToken);
+
+    public Task<Result<UserResponse>> DeactivateAsync(Guid id, CancellationToken cancellationToken) =>
+        exclusive.RunAsync(AdministratorsLock, ct => DeactivateCoreAsync(id, ct), cancellationToken);
+
+    private async Task<Result<UserResponse>> SetRolesCoreAsync(Guid id, UpdateUserRolesRequest request, CancellationToken cancellationToken)
     {
         var validation = await rolesValidator.ValidateAsync(request, cancellationToken);
         if (!validation.IsValid)
@@ -131,7 +144,7 @@ internal sealed class UserService(
         return await GetAsync(user.Id, cancellationToken);
     }
 
-    public async Task<Result<UserResponse>> DeactivateAsync(Guid id, CancellationToken cancellationToken)
+    private async Task<Result<UserResponse>> DeactivateCoreAsync(Guid id, CancellationToken cancellationToken)
     {
         var user = await LoadAsync(id, tracking: true, cancellationToken);
         if (user is null)
