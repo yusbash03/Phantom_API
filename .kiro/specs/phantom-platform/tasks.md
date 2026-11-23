@@ -216,7 +216,7 @@ Do not start a Phase 3 feature while the previous one has unresolved critical fa
     - AllowedHosts.
     - Don't publish Playwright traces.
   - Accepted residual risk: sequential public references (coarse status only, rate-limited); up to 15 minutes of access-token validity after deactivation; names in report text can reach the AI; in-memory login throttle (single instance).
-  - Verification: 201 unit tests (2 live skipped) and 150 integration tests (stable over 3 runs), 117 Vitest, and the voice and auth Playwright specs (10/10, including a real Chromium WebM recording passing the stricter audio check). The full Playwright suite was still running at commit time.
+  - Verification: 201 unit tests (2 live skipped) and 150 integration tests (stable over 3 runs), 117 Vitest, and the voice and auth Playwright specs (10/10, including a real Chromium WebM recording passing the stricter audio check). Full Playwright suite: 50/50 on 2026-11-23.
 - [ ] 36. Responsive and accessibility pass; loading/empty/error coverage audit
 - [ ] 37. Deployment: Dockerfile, Render (or Azure) service, managed PostgreSQL, migration bundle release step, R2 storage, Vercel with rewrites, environment variables, CORS; verify `/health/ready` publicly
 - [ ] 38. Demo data for judging deployment (labelled) and recorded weather/AI fixtures (labelled)
