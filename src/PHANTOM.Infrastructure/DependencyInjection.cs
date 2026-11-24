@@ -81,6 +81,15 @@ public static class DependencyInjection
             .UseSnakeCaseNamingConvention();
 
     /// <summary>
+    /// Recorded, labelled fixtures may stand in for live providers in test environments and in an explicit demo
+    /// deployment (Requirement 20.3: a "Demo" environment, or Production with both Seed:Enabled and
+    /// Seed:AllowDemoInProduction for judging). Never in an ordinary production deployment.
+    /// </summary>
+    internal static bool AllowsRecordedFixtures(IHostEnvironment environment, IConfiguration configuration) =>
+        environment.IsDevelopment() || environment.IsEnvironment("Testing") || environment.IsEnvironment("Demo")
+        || (configuration.GetValue<bool>("Seed:Enabled") && configuration.GetValue<bool>("Seed:AllowDemoInProduction"));
+
+    /// <summary>
     /// Npgsql tries Kerberos (GSS) encryption first by default, which logs a native-library error in the slim
     /// container image. Neon and the other targets use TLS, so skip the probe unless a connection string asks for it.
     /// </summary>
@@ -112,10 +121,10 @@ public static class DependencyInjection
         if (ai.Provider == AiOptions.RecordedFixtureProvider)
         {
             // A replayed recording must never stand in for real analysis where real incidents are handled.
-            if (!environment.IsDevelopment() && !environment.IsEnvironment("Testing"))
+            if (!AllowsRecordedFixtures(environment, configuration))
             {
                 throw new InvalidOperationException(
-                    $"Ai:Provider '{AiOptions.RecordedFixtureProvider}' is for test environments only, not '{environment.EnvironmentName}'.");
+                    $"Ai:Provider '{AiOptions.RecordedFixtureProvider}' is for test environments and explicit demo deployments only, not '{environment.EnvironmentName}'.");
             }
 
             services.AddSingleton<IIncidentIntelligenceService, RecordedFixtureIntelligenceService>();
@@ -207,10 +216,10 @@ public static class DependencyInjection
         if (weather.Provider == WeatherOptions.FixtureProvider)
         {
             // A recorded reading must never be shown as current weather where real incidents are handled.
-            if (!environment.IsDevelopment() && !environment.IsEnvironment("Testing"))
+            if (!AllowsRecordedFixtures(environment, configuration))
             {
                 throw new InvalidOperationException(
-                    $"Weather:Provider '{WeatherOptions.FixtureProvider}' is for test environments only, not '{environment.EnvironmentName}'.");
+                    $"Weather:Provider '{WeatherOptions.FixtureProvider}' is for test environments and explicit demo deployments only, not '{environment.EnvironmentName}'.");
             }
 
             services.AddSingleton<IWeatherService, FixtureWeatherService>();

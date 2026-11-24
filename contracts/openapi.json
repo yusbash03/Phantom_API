@@ -5878,7 +5878,8 @@
           "isVerified",
           "locationText",
           "geocoderPlaceName",
-          "createdAt"
+          "createdAt",
+          "isDemoData"
         ],
         "type": "object",
         "properties": {
@@ -5947,6 +5948,9 @@
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "isDemoData": {
+            "type": "boolean"
           }
         },
         "description": "One plotted incident. Unverified locations are labelled as such wherever they appear (8.8)."

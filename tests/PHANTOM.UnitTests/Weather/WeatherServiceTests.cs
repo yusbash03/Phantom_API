@@ -127,7 +127,7 @@ public sealed class WeatherServiceTests
         }).Build();
         var services = new ServiceCollection().AddLogging();
         var error = Assert.Throws<InvalidOperationException>(() => services.AddInfrastructure(configuration, new HostEnvironment(environment)));
-        Assert.Contains("test environments only", error.Message, StringComparison.Ordinal);
+        Assert.Contains("test environments and explicit demo deployments only", error.Message, StringComparison.Ordinal);
     }
 
     private static OpenMeteoWeatherService Create(StubHandler handler, int cacheMinutes, int timeoutSeconds = 5) =>

@@ -208,7 +208,7 @@ internal sealed class IncidentService(
             .Select(i => new MapIncident(
                 i.Id, i.Number, i.Title, i.Category, i.Status, i.ApprovedSeverity, i.AiRecommendedSeverity,
                 i.Location.Latitude!.Value, i.Location.Longitude!.Value, i.Location.Provenance, i.Location.Precision,
-                i.Location.Provenance == LocationProvenance.ManuallyVerified, i.Location.Text, i.Location.GeocoderPlaceName, i.CreatedAt))
+                i.Location.Provenance == LocationProvenance.ManuallyVerified, i.Location.Text, i.Location.GeocoderPlaceName, i.CreatedAt, i.IsDemoData))
             .ToListAsync(cancellationToken);
 
         var truncated = rows.Count > IncidentMapResponse.MaxItems;

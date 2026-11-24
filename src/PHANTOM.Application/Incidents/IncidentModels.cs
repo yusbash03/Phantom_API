@@ -172,7 +172,8 @@ public sealed record MapIncident(
     bool IsVerified,
     string LocationText,
     string? GeocoderPlaceName,
-    DateTimeOffset CreatedAt);
+    DateTimeOffset CreatedAt,
+    bool IsDemoData);
 
 /// <summary>
 /// <c>WithoutCoordinates</c> counts matching incidents that cannot be plotted, so the map never implies

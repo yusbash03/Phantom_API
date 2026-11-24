@@ -42,6 +42,7 @@ public sealed class RecordedFixtureTests
     [Theory]
     [InlineData("Development")]
     [InlineData("Testing")]
+    [InlineData("Demo")]
     public void Is_registered_in_test_environments(string environment)
     {
         using var provider = Build(environment).BuildServiceProvider();
@@ -54,12 +55,22 @@ public sealed class RecordedFixtureTests
     public void Refuses_to_start_anywhere_else(string environment)
     {
         var error = Assert.Throws<InvalidOperationException>(() => Build(environment));
-        Assert.Contains("test environments only", error.Message, StringComparison.Ordinal);
+        Assert.Contains("test environments and explicit demo deployments only", error.Message, StringComparison.Ordinal);
     }
 
-    private static ServiceCollection Build(string environment)
+    [Fact]
+    public void Is_allowed_in_production_only_for_an_explicit_judging_deployment()
     {
-        var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        // Requirement 20.3: both demo switches must be on; either alone is not enough.
+        Assert.Throws<InvalidOperationException>(() => Build("Production", ("Seed:Enabled", "true")));
+        Assert.Throws<InvalidOperationException>(() => Build("Production", ("Seed:AllowDemoInProduction", "true")));
+        using var provider = Build("Production", ("Seed:Enabled", "true"), ("Seed:AllowDemoInProduction", "true")).BuildServiceProvider();
+        Assert.IsType<RecordedFixtureIntelligenceService>(provider.GetRequiredService<IIncidentIntelligenceService>());
+    }
+
+    private static ServiceCollection Build(string environment, params (string Key, string Value)[] extra)
+    {
+        var settings = new Dictionary<string, string?>
         {
             ["Ai:Provider"] = AiOptions.RecordedFixtureProvider,
             ["Ai:WorkerEnabled"] = "false",
@@ -69,7 +80,13 @@ public sealed class RecordedFixtureTests
             ["Storage:S3:Bucket"] = "test",
             ["Storage:S3:AccessKeyId"] = "test",
             ["Storage:S3:SecretAccessKey"] = "test",
-        }).Build();
+        };
+        foreach (var (key, value) in extra)
+        {
+            settings[key] = value;
+        }
+
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(settings).Build();
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddInfrastructure(configuration, new Environment(environment));

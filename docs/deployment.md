@@ -55,7 +55,7 @@ The full Playwright suite was also run against the production SPA build with the
 
 3. `ForwardedHeaders__TrustPlatformProxy=true` is preset (security review B-F4). It is safe only because Render serves the service exclusively through its proxy, so rate limits see real client IPs.
 4. Optional: `Privacy__IpHashKey` (a separate key for reporter-IP pseudonyms) and `Auth__*` limits (see `.env.example`).
-5. Demo data for judging (task 38) is off by default. It requires both `Seed__Enabled=true` and `Seed__AllowDemoInProduction=true`, plus `Seed__DemoUserPassword`.
+5. Demo data for judging (task 38, Requirement 20) is off by default. See "Judging deployment" below.
 
 Check: `curl https://<api-host>/health/ready` should return `200`.
 
@@ -68,6 +68,23 @@ Check: `curl https://<api-host>/health/ready` should return `200`.
    - `VITE_HUB_URL=https://<api-host>/hubs/operations`.
 
 Check: open the site, submit a public report, sign in, and confirm the top bar says "Live".
+
+## Judging deployment (demo data and recorded fixtures)
+
+For a public judging instance only, set all three. Leave them unset for any real use.
+
+| Variable | Effect |
+|---|---|
+| `Seed__Enabled=true` and `Seed__AllowDemoInProduction=true` | Seeds three demo accounts (`admin@`, `coordinator@` and `responder@phantom.demo`), five demo responders and five demo incidents around Lagos. Every record is flagged `IsDemoData`, shown with a "Demo data" badge, and each incident title starts with "Demo:". Seeding runs once. |
+| `Seed__DemoUserPassword` | The demo accounts' password (at least 12 characters). Share it only with the judges. |
+
+Only with both seed switches on, a live provider may be replaced by its labelled recorded fixture (Requirement 20.3).
+In any other Production deployment the API refuses to start with a fixture.
+
+| Variable | Effect |
+|---|---|
+| `Ai__Provider=RecordedFixture` | Replays one real gemini-3.8-flash response, shown as "Recorded test fixture — not an analysis of this report". Use it if no Gemini key is available. |
+| `Weather__Provider=Fixture` | Replays one real Open-Meteo reading, shown as "Recorded test fixture — not live weather". Use it if Open-Meteo is unavailable. |
 
 ## 5. After deploying
 

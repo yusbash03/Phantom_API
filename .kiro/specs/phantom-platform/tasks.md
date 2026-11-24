@@ -245,6 +245,15 @@ Do not start a Phase 3 feature while the previous one has unresolved critical fa
     - A photo report was stored in S3, and the API security headers were present.
   - Tests: 205 unit tests (2 live skipped) and 155 integration tests (5 new S3 storage tests against S3Mock; stable over 3 runs), 118 Vitest, and 58 Playwright tests against the production build served with the Vercel CSP and headers (`vite preview`), with no CSP violations. An earlier attempt exited 1, but its log was lost because Playwright clears `test-results/`, where it had been written; the re-run passed 58/58.
   - Note: MinIO no longer publishes community images on Docker Hub, so the storage tests use `adobe/s3mock:4.7.0`, which does not enforce ACLs. Privacy rests on no ACL or public URL ever being set, and on the R2 bucket staying private.
-- [ ] 38. Demo data for judging deployment (labelled) and recorded weather/AI fixtures (labelled)
+- [x] 38. Demo data for judging deployment (labelled) and recorded weather/AI fixtures (labelled)
+  - Done 2026-11-24 (Requirement 20).
+  - `DemoDataSeeder` now also seeds five fictional incidents around Lagos, once, all flagged `IsDemoData` and titled "Demo: …": three Reported (fire, flood, road accident), one Verified High (medical) and one Resolved (infrastructure). Times are staggered over the past 9 hours.
+    - They go through the same domain rules as real reports: each has its original report and a queued AI analysis.
+    - Their history is audited and attributed to the Demo Coordinator, marked `demoSeed`, with approved-severity and resolution details.
+    - Seeding still runs only in Development or Demo, or in Production with both `Seed:Enabled` and `Seed:AllowDemoInProduction`.
+  - Labelling: "Demo data" badges were already on incident list and detail, responders and users. They are now also on the map's list and selected-incident card (`MapIncident.IsDemoData` added).
+  - Fixtures (20.3): the labelled AI (`RecordedFixture`) and weather (`Fixture`) recordings are allowed in Development, Testing, `Demo`, and Production only when both seed switches are on (an explicit judging deployment). Any other Production deployment refuses them at startup.
+  - `docs/deployment.md` has a "Judging deployment" section.
+  - Verification: 207 unit tests (2 live skipped) and 156 integration tests (1 new seeding test: seeded once, statuses, reports, queued analyses, attributed and marked audit; stable over 3 runs), 119 Vitest (1 new), and 60 Playwright tests (2 new: seeded demo incidents labelled in the list, on the incident page with coordinator-attributed history, and on the map).
 - [ ] 39. README (both repos), API docs, environment docs, LICENSE (MIT), demo script, `docs/kiro-usage.md` finalised from the actual log
 - [ ] 40. Final verification of the public deployment against the demonstration scenario
