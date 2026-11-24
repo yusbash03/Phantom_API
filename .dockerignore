@@ -1,0 +1,17 @@
+**/bin/
+**/obj/
+.git/
+.kiro/
+.vs/
+.vscode/
+.idea/
+docs/
+tests/
+TestResults/
+storage/
+contracts/
+*.md
+.env
+.env.*
+!.env.example
+docker-compose.yml

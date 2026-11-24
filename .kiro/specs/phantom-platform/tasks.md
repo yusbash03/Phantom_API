@@ -227,6 +227,24 @@ Do not start a Phase 3 feature while the previous one has unresolved critical fa
   - Build fix: OpenAPI generation at build time inherited Playwright's fixture providers, which are refused outside Development/Testing, so a rebuild started from Playwright failed. Program now pins neutral providers for the generator.
   - Verification: 201 unit tests (2 live skipped), 150 integration tests, 118 Vitest, and 58 Playwright tests (8 new accessibility checks).
 - [ ] 37. Deployment: Dockerfile, Render (or Azure) service, managed PostgreSQL, migration bundle release step, R2 storage, Vercel with rewrites, environment variables, CORS; verify `/health/ready` publicly
+  - **Prepared and verified locally 2026-11-24; not yet deployed.** Deploying needs the owner's Neon, Cloudflare R2, Render and Vercel accounts. The step-by-step guide is in `docs/deployment.md`. This stays unticked until `/health/ready` is checked publicly.
+  - Backend:
+    - Storage: `S3CompatibleObjectStorage` (AWSSDK.S3 4.0.104.11) with `Storage:Provider=S3` for R2. Production refuses local disk storage. Objects are private and keys are validated.
+    - `Dockerfile`: SDK 10.0.400 → aspnet 10.0.15, non-root `app` user, port 8080, plus the EF migrations bundle `/app/efbundle`.
+    - `render.yaml`: a pre-deploy release step runs the bundle as the owner role; health check `/health/ready`; secrets are `sync: false`; `TrustPlatformProxy=true`.
+    - `docs/deployment/db-roles.sql`: runtime role `phantom_app` with no UPDATE/DELETE/TRUNCATE on `audit_logs` and no write to the migrations history.
+    - The Npgsql GSS probe is disabled, which removed a misleading native-library error. Build-time OpenAPI generation runs as Development so production-only guards don't stop the build.
+  - Frontend:
+    - `vercel.json`: `/api` rewrite, SPA fallback, CSP (self, the API origin over https/wss, Mapbox, blob workers and media), frame/nosniff/referrer/permissions headers, and caching for immutable assets.
+    - The SignalR hub is reached directly at `VITE_HUB_URL`, since Vercel rewrites can't carry WebSockets; bearer token only, no cookies.
+    - `vite preview` serves the build with the same headers, and the accessibility spec fails on any CSP violation.
+  - Local verification of the production image (PostgreSQL and S3Mock containers):
+    - The release step applied all migrations; the roles script applied.
+    - The runtime role was refused UPDATE, DELETE and DISABLE TRIGGER on `audit_logs`.
+    - `/health/ready` returned 200 and an unknown Host got 400.
+    - A photo report was stored in S3, and the API security headers were present.
+  - Tests: 205 unit tests (2 live skipped) and 155 integration tests (5 new S3 storage tests against S3Mock; stable over 3 runs), 118 Vitest, and 58 Playwright tests against the production build served with the Vercel CSP and headers (`vite preview`), with no CSP violations. An earlier attempt exited 1, but its log was lost because Playwright clears `test-results/`, where it had been written; the re-run passed 58/58.
+  - Note: MinIO no longer publishes community images on Docker Hub, so the storage tests use `adobe/s3mock:4.7.0`, which does not enforce ACLs. Privacy rests on no ACL or public URL ever being set, and on the R2 bucket staying private.
 - [ ] 38. Demo data for judging deployment (labelled) and recorded weather/AI fixtures (labelled)
 - [ ] 39. README (both repos), API docs, environment docs, LICENSE (MIT), demo script, `docs/kiro-usage.md` finalised from the actual log
 - [ ] 40. Final verification of the public deployment against the demonstration scenario

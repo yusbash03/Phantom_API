@@ -64,6 +64,11 @@ public sealed class RecordedFixtureTests
             ["Ai:Provider"] = AiOptions.RecordedFixtureProvider,
             ["Ai:WorkerEnabled"] = "false",
             ["Geocoding:WorkerEnabled"] = "false",
+            // Production also requires object storage; satisfy that guard so only the fixture guard is tested.
+            ["Storage:Provider"] = "S3",
+            ["Storage:S3:Bucket"] = "test",
+            ["Storage:S3:AccessKeyId"] = "test",
+            ["Storage:S3:SecretAccessKey"] = "test",
         }).Build();
         var services = new ServiceCollection();
         services.AddLogging();

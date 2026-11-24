@@ -9,6 +9,7 @@
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" />
     <PackageReference Include="SkiaSharp" />
+    <PackageReference Include="AWSSDK.S3" />
     <!-- Linux native library for the Render container image (macOS/Windows assets ship with SkiaSharp). -->
     <PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" />
   </ItemGroup>

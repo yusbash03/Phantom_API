@@ -62,7 +62,7 @@ public static class DependencyInjection
         services.AddSingleton<ITokenService, JwtTokenService>();
         services.AddSingleton<IFileInspector, MagicByteFileInspector>();
         services.AddSingleton<IImageProcessor, SkiaSharpImageProcessor>();
-        services.AddScoped<IObjectStorage, LocalFileObjectStorage>();
+        AddStorage(services, configuration, environment);
         services.AddScoped<IIncidentNumberGenerator, PostgresIncidentNumberGenerator>();
         services.AddScoped<DemoDataSeeder>();
         AddIntelligence(services, configuration, environment);
@@ -75,10 +75,25 @@ public static class DependencyInjection
 
     internal static void ConfigureDbContext(DbContextOptionsBuilder options, string connectionString) =>
         options
-            .UseNpgsql(connectionString, npgsql => npgsql
+            .UseNpgsql(WithoutGssProbe(connectionString), npgsql => npgsql
                 .MigrationsHistoryTable("__ef_migrations_history")
                 .EnableRetryOnFailure(3))
             .UseSnakeCaseNamingConvention();
+
+    /// <summary>
+    /// Npgsql tries Kerberos (GSS) encryption first by default, which logs a native-library error in the slim
+    /// container image. Neon and the other targets use TLS, so skip the probe unless a connection string asks for it.
+    /// </summary>
+    private static string WithoutGssProbe(string connectionString)
+    {
+        var builder = new Npgsql.NpgsqlConnectionStringBuilder(connectionString);
+        if (!connectionString.Contains("GSS", StringComparison.OrdinalIgnoreCase))
+        {
+            builder.GssEncryptionMode = Npgsql.GssEncryptionMode.Disable;
+        }
+
+        return builder.ConnectionString;
+    }
 
     private static void AddIntelligence(IServiceCollection services, IConfiguration configuration, IHostEnvironment environment)
     {
@@ -143,6 +158,36 @@ public static class DependencyInjection
         {
             services.AddHostedService<AnalysisWorker>();
         }
+    }
+
+    /// <summary>
+    /// Design §10: local files in development, S3-compatible object storage (R2) elsewhere. Render's disk is wiped on
+    /// every deploy, so Production refuses local storage rather than silently losing uploads.
+    /// </summary>
+    private static void AddStorage(IServiceCollection services, IConfiguration configuration, IHostEnvironment environment)
+    {
+        var provider = configuration["Storage:Provider"] ?? "Local";
+        if (string.Equals(provider, "S3", StringComparison.OrdinalIgnoreCase))
+        {
+            services.AddOptions<S3StorageOptions>().Bind(configuration.GetSection(S3StorageOptions.SectionName))
+                .Validate(o => o.IsConfigured, "Storage:S3 needs Bucket, AccessKeyId and SecretAccessKey.")
+                .ValidateOnStart();
+            services.AddSingleton<Amazon.S3.IAmazonS3>(sp => S3CompatibleObjectStorage.CreateClient(sp.GetRequiredService<IOptions<S3StorageOptions>>().Value));
+            services.AddScoped<IObjectStorage, S3CompatibleObjectStorage>();
+            return;
+        }
+
+        if (!string.Equals(provider, "Local", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException($"Storage:Provider must be 'Local' or 'S3', not '{provider}'.");
+        }
+
+        if (environment.IsProduction())
+        {
+            throw new InvalidOperationException("Storage:Provider must be 'S3' in Production: the container's disk does not survive a deploy.");
+        }
+
+        services.AddScoped<IObjectStorage, LocalFileObjectStorage>();
     }
 
     private static void AddWeather(IServiceCollection services, IConfiguration configuration, IHostEnvironment environment)

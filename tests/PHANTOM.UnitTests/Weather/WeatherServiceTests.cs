@@ -117,6 +117,11 @@ public sealed class WeatherServiceTests
         {
             ["Weather:Provider"] = WeatherOptions.FixtureProvider,
             ["Weather:WorkerEnabled"] = "false",
+            // Production also requires object storage; satisfy that guard so only the fixture guard is tested.
+            ["Storage:Provider"] = "S3",
+            ["Storage:S3:Bucket"] = "test",
+            ["Storage:S3:AccessKeyId"] = "test",
+            ["Storage:S3:SecretAccessKey"] = "test",
             ["Ai:WorkerEnabled"] = "false",
             ["Mapbox:WorkerEnabled"] = "false",
         }).Build();

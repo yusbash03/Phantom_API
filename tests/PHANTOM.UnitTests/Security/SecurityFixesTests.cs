@@ -93,4 +93,39 @@ public sealed class SecurityFixesTests
         Assert.Equal(PageRequest.MaxPage, page.SafePage);
         Assert.True(page.Skip > 0);
     }
+
+    [Theory]
+    [InlineData("Production", null, true)]
+    [InlineData("Production", "Local", true)]
+    [InlineData("Development", null, false)]
+    [InlineData("Production", "Ftp", true)]
+    public void Production_refuses_local_disk_storage(string environment, string? provider, bool throws)
+    {
+        var configuration = new Microsoft.Extensions.Configuration.ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Storage:Provider"] = provider,
+            ["Ai:WorkerEnabled"] = "false",
+            ["Mapbox:WorkerEnabled"] = "false",
+            ["Weather:WorkerEnabled"] = "false",
+        }).Build();
+        var services = new Microsoft.Extensions.DependencyInjection.ServiceCollection();
+        Microsoft.Extensions.DependencyInjection.LoggingServiceCollectionExtensions.AddLogging(services);
+        var env = new HostEnvironment { EnvironmentName = environment };
+        if (throws)
+        {
+            Assert.Throws<InvalidOperationException>(() => PHANTOM.Infrastructure.DependencyInjection.AddInfrastructure(services, configuration, env));
+        }
+        else
+        {
+            PHANTOM.Infrastructure.DependencyInjection.AddInfrastructure(services, configuration, env);
+        }
+    }
+
+    private sealed class HostEnvironment : Microsoft.Extensions.Hosting.IHostEnvironment
+    {
+        public string EnvironmentName { get; set; } = "Production";
+        public string ApplicationName { get; set; } = "PHANTOM.UnitTests";
+        public string ContentRootPath { get; set; } = AppContext.BaseDirectory;
+        public Microsoft.Extensions.FileProviders.IFileProvider ContentRootFileProvider { get; set; } = new Microsoft.Extensions.FileProviders.NullFileProvider();
+    }
 }

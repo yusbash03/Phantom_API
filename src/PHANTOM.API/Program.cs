@@ -25,6 +25,9 @@ var builder = WebApplication.CreateBuilder(args);
 var isOpenApiGeneration = System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name == "GetDocument.Insider";
 if (isOpenApiGeneration)
 {
+    // It describes routes only: no storage, providers or workers are used, so production-only guards
+    // (e.g. "object storage required in Production") must not stop the build.
+    builder.Environment.EnvironmentName = Environments.Development;
     builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
     {
         ["Jwt:SigningKey"] = "openapi-generation-placeholder-never-used-to-sign",
@@ -35,6 +38,7 @@ if (isOpenApiGeneration)
         ["Weather:Provider"] = "OpenMeteo",
         ["Weather:WorkerEnabled"] = "false",
         ["Mapbox:WorkerEnabled"] = "false",
+        ["Storage:Provider"] = "Local",
     });
 }
 
