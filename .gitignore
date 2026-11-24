@@ -19,7 +19,7 @@ appsettings.*.local.json
 *.pem
 
 # Local file storage for development uploads
-storage/
+/storage/
 
 # OS
 .DS_Store
