@@ -255,5 +255,13 @@ Do not start a Phase 3 feature while the previous one has unresolved critical fa
   - Fixtures (20.3): the labelled AI (`RecordedFixture`) and weather (`Fixture`) recordings are allowed in Development, Testing, `Demo`, and Production only when both seed switches are on (an explicit judging deployment). Any other Production deployment refuses them at startup.
   - `docs/deployment.md` has a "Judging deployment" section.
   - Verification: 207 unit tests (2 live skipped) and 156 integration tests (1 new seeding test: seeded once, statuses, reports, queued analyses, attributed and marked audit; stable over 3 runs), 119 Vitest (1 new), and 60 Playwright tests (2 new: seeded demo incidents labelled in the list, on the incident page with coordinator-attributed history, and on the map).
-- [ ] 39. README (both repos), API docs, environment docs, LICENSE (MIT), demo script, `docs/kiro-usage.md` finalised from the actual log
+- [x] 39. README (both repos), API docs, environment docs, LICENSE (MIT), demo script, `docs/kiro-usage.md` finalised from the actual log
+  - Done 2026-11-24.
+    - `README.md` in both repositories.
+    - `docs/api.md`: 64 endpoints generated from `contracts/openapi.json`, with access levels taken from the controller policies, plus auth, errors, concurrency, real-time events and AI output.
+    - `docs/configuration.md`: every option class and setting, its default, range and whether it is secret, checked against the code.
+    - `docs/demo-script.md`: the §12 scenario, every step covered by `e2e/demo-scenario.spec.ts`.
+    - MIT `LICENSE` in both repositories.
+  - `docs/kiro-usage.md` is finalised from the evidence: all 52 commits carry the Claude Code co-author trailer; the spec and steering were used as the work order and rules; the security-reviewer agent brief was run in Claude Code (task 35); hooks were not confirmed to run in Kiro.
+  - **Two maintainer items remain open in that file**, deliberately not guessed: what, if anything, was done in Kiro before the hand-over, and whether the hooks and agents were ever loaded in Kiro.
 - [ ] 40. Final verification of the public deployment against the demonstration scenario

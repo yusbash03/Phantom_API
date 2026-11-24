@@ -29,3 +29,21 @@ These artefacts were authored in Kiro's formats but have **not yet been loaded o
 | Testing | Found and fixed two real defects: (1) refresh shared the login rate-limit bucket, locking out users who reload; (2) simultaneous sign-ins of one user hit an optimistic-concurrency conflict | `RateLimitPolicies.cs`, `AuthService.cs`, `AuthTests.Simultaneous_sign_ins_by_the_same_user_all_succeed` |
 
 Kiro hooks, custom agents, MCP, Powers and Kiro Crew were **not** exercised in this phase.
+
+## 2026-11-19 to 2026-11-24 — Phases 3 and 4 (tasks 10 to 38)
+
+| Tool / Kiro feature | What was actually done | Evidence |
+|---|---|---|
+| Claude Code (VS Code extension), **not Kiro** | Implemented tasks 10 and 12 onwards in both repositories, one task at a time. The maintainer reported that their **Kiro tokens were used up** and asked Claude Code to continue the task list. | Every commit in both repositories (27 in Phantom_API and 25 in Phantom_UI as of 2026-11-24) carries a `Co-Authored-By: Claude` trailer (`git log --format=%B`). |
+| Spec (`requirements.md`, `design.md`, `tasks.md`) | Used as the work order and acceptance criteria. Each task was ticked only after its tests passed, with a dated verification note, and partially done work was left unticked (task 37 remains unticked until deployed). | `tasks.md` notes for tasks 10 to 38 |
+| Steering (`product.md`, `security.md`, `architecture.md`, `testing.md`, `coding-standards.md`, `frontend.md`) | Followed for the product rules (AI advisory only, honest location labels, nothing deleted, everything audited), security controls, layering and test expectations. | Code and tests; e.g. `IntelligencePanel.tsx` "Advisory only", the `LocationBadge` provenance labels, the audit-log trigger |
+| Custom agent `phantom-security-reviewer` (`.kiro/agents/*.json`) | Its prompt was used **as the brief** for two read-only reviewer subagents **in Claude Code** (task 35), one per repository. Each finding was checked in the code before it was fixed. The agent was **not run in Kiro**. | `docs/security-review.md` |
+| Hooks (`*.kiro.hook`) | **Not confirmed to run in Kiro.** The checks they describe were run by hand after each task instead: backend tests, contract regeneration (`npm run api:generate`), lint and typecheck. | Verification notes in `tasks.md` |
+| Kiro Powers, MCP servers, Kiro Crew | Not used. | — |
+
+### To be completed by the maintainer
+
+- [ ] Which tasks, files or plans (if any) were produced or changed **in Kiro** before the hand-over to Claude Code,
+      and on what date the Kiro tokens ran out. No commit in either repository is attributable to Kiro alone, so this
+      cannot be established from the repositories and is deliberately left blank rather than guessed.
+- [ ] Whether the hooks and custom agents were ever loaded in the Kiro IDE or CLI (see "Pending verification" above).
