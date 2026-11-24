@@ -217,7 +217,15 @@ Do not start a Phase 3 feature while the previous one has unresolved critical fa
     - Don't publish Playwright traces.
   - Accepted residual risk: sequential public references (coarse status only, rate-limited); up to 15 minutes of access-token validity after deactivation; names in report text can reach the AI; in-memory login throttle (single instance).
   - Verification: 201 unit tests (2 live skipped) and 150 integration tests (stable over 3 runs), 117 Vitest, and the voice and auth Playwright specs (10/10, including a real Chromium WebM recording passing the stricter audio check). Full Playwright suite: 50/50 on 2026-11-23.
-- [ ] 36. Responsive and accessibility pass; loading/empty/error coverage audit
+- [x] 36. Responsive and accessibility pass; loading/empty/error coverage audit
+  - Done 2026-11-23. `e2e/accessibility.spec.ts` (@axe-core/playwright 4.14.0) scans every main screen on desktop and Pixel 7: public report, status, login, dashboard, incident list and detail, map, reports, responders, notifications, users, audit, settings, My assignments, account. It fails on any serious or critical WCAG 2.1 A/AA violation and on horizontal scrolling. The Mapbox canvas is excluded; markers are covered by the keyboard-operable list. axe finds only part of WCAG automatically; the role and label based queries across all specs cover keyboard and name semantics.
+  - Fixed:
+    - Label in name (2.5.3): select triggers now combine the label with the visible value ("Filter by role All roles"); the account menu names the visible user and role; metric tiles use their visible content; the notification bell's name matches its "99+" badge.
+    - Contrast: the critical severity colour was lightened (oklch 0.64 → 0.70) so badge text passes 4.5:1.
+    - Overflow on phones: `min-w-0` on dashboard and map grid items, so long titles truncate instead of widening the page.
+  - Loading/empty/error audit: every data-loading screen has all three states. One gap fixed: the Assign dialog said "no active responders" when the responder list failed to load; it now shows an error with retry (Vitest).
+  - Build fix: OpenAPI generation at build time inherited Playwright's fixture providers, which are refused outside Development/Testing, so a rebuild started from Playwright failed. Program now pins neutral providers for the generator.
+  - Verification: 201 unit tests (2 live skipped), 150 integration tests, 118 Vitest, and 58 Playwright tests (8 new accessibility checks).
 - [ ] 37. Deployment: Dockerfile, Render (or Azure) service, managed PostgreSQL, migration bundle release step, R2 storage, Vercel with rewrites, environment variables, CORS; verify `/health/ready` publicly
 - [ ] 38. Demo data for judging deployment (labelled) and recorded weather/AI fixtures (labelled)
 - [ ] 39. README (both repos), API docs, environment docs, LICENSE (MIT), demo script, `docs/kiro-usage.md` finalised from the actual log

@@ -28,6 +28,13 @@ if (isOpenApiGeneration)
     builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
     {
         ["Jwt:SigningKey"] = "openapi-generation-placeholder-never-used-to-sign",
+        // The generator inherits the caller's environment variables (e.g. Playwright's fixture providers, which
+        // are refused outside Development/Testing). It never calls a provider, so pin neutral ones and no workers.
+        ["Ai:Provider"] = "Gemini",
+        ["Ai:WorkerEnabled"] = "false",
+        ["Weather:Provider"] = "OpenMeteo",
+        ["Weather:WorkerEnabled"] = "false",
+        ["Mapbox:WorkerEnabled"] = "false",
     });
 }
 
