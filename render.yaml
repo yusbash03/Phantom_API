@@ -6,7 +6,7 @@ services:
     runtime: docker
     dockerfilePath: ./Dockerfile
     plan: starter            # pre-deploy (migration) commands need a paid instance type
-    region: frankfurt
+    region: frankfurt          # same city as the production Neon database (aws-eu-central-1); storage is in eu-west-1
     healthCheckPath: /health/ready
     # Release step: apply migrations with the database owner role before the new version takes traffic.
     preDeployCommand: ./efbundle --connection "$MIGRATIONS_CONNECTION_STRING"
@@ -25,7 +25,9 @@ services:
         sync: false
       - key: Storage__Provider
         value: S3
-      - key: Storage__S3__ServiceUrl             # https://<account-id>.r2.cloudflarestorage.com
+      - key: Storage__S3__ServiceUrl             # Supabase: https://<project-ref>.supabase.co/storage/v1/s3
+        sync: false
+      - key: Storage__S3__Region                 # Supabase: the project's region (eu-west-1 for phantom_files)
         sync: false
       - key: Storage__S3__Bucket
         sync: false

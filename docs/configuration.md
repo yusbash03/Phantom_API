@@ -44,9 +44,9 @@ Options are validated at startup: an out-of-range value stops the API with a mes
 |---|---|---|
 | `Storage:Provider` | `Local` | `Local` or `S3`. **Production requires `S3`**: container disks are wiped on every deploy. |
 | `Storage:Local:BasePath` | system temp `/phantom-storage` | Development only; outside the web root. |
-| `Storage:S3:ServiceUrl` | — | Cloudflare R2: `https://<account-id>.r2.cloudflarestorage.com`. Leave empty for AWS S3. |
+| `Storage:S3:ServiceUrl` | — | Supabase Storage: `https://<project-ref>.supabase.co/storage/v1/s3`. Cloudflare R2: `https://<account-id>.r2.cloudflarestorage.com`. Leave empty for AWS S3. |
 | `Storage:S3:Bucket` | — | Keep the bucket private; downloads go through the API. |
-| `Storage:S3:Region` | `auto` | `auto` for R2. |
+| `Storage:S3:Region` | `auto` | Supabase: the project's region (e.g. `us-east-2`), which must match. R2: `auto`. |
 | `Storage:S3:AccessKeyId`, `Storage:S3:SecretAccessKey` | — | Secrets. Use a token scoped to this one bucket. |
 
 ## AI (Gemini)

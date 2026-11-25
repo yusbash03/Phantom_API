@@ -5,9 +5,9 @@ The target layout follows design §13:
 | Part | Where | Notes |
 |---|---|---|
 | SPA | Vercel | `Phantom_UI/vercel.json`: `/api/*` rewrite to the API, SPA fallback, CSP and headers |
-| API | Render web service (Docker) | `Phantom_API/render.yaml` and `Dockerfile` |
-| Database | Neon PostgreSQL | Use the **direct** (non `-pooler`) host. EF migrations take session-level locks. |
-| Files | Cloudflare R2 (S3 API) | `Storage__Provider=S3`. Render's disk is wiped on every deploy, so Production refuses local storage. |
+| API | Render web service (Docker, Frankfurt) | `Phantom_API/render.yaml` and `Dockerfile` |
+| Database | Neon PostgreSQL (Frankfurt, aws-eu-central-1) | Use the **direct** (non `-pooler`) host. EF migrations take session-level locks. |
+| Files | Supabase Storage (S3 API, eu-west-1 Ireland) | `Storage__Provider=S3`. Render's disk is wiped on every deploy, so Production refuses local storage. |
 | Live updates | Browser → API directly | `VITE_HUB_URL`. Vercel rewrites cannot carry WebSockets. |
 
 Everything below was verified locally with the production image on 2026-11-23:
@@ -22,17 +22,23 @@ The full Playwright suite was also run against the production SPA build with the
 
 ## 1. Database (Neon)
 
-1. Create a project and database `phantom`. Note the **owner** connection string, using the direct host and `SSL Mode=Require`. This is `MIGRATIONS_CONNECTION_STRING`.
+1. Create a **separate** project (or at least a separate database) for production. Never reuse the development database, which is full of test data. Choose region **AWS Europe Central 1 (Frankfurt)**, the same city as the API (`render.yaml`: `frankfurt`) and close to Supabase Storage (eu-west-1, Ireland). Database calls happen on almost every request, so the API and the database must share a region. Create database `phantom`.
 2. Apply the migrations once, either from the image (`docker run --rm --entrypoint ./efbundle phantom-api --connection "<owner>"`) or through the first Render deploy's pre-deploy step.
 3. Create the runtime role (security review B-F3):
    `psql "<owner>" -v app_password="'<strong-random>'" -f docs/deployment/db-roles.sql`
 4. The runtime connection string uses `Username=phantom_app`. This is `ConnectionStrings__Phantom`.
 
-## 2. Object storage (Cloudflare R2)
+## 2. Object storage (Supabase Storage)
 
-1. Create a bucket, e.g. `phantom-attachments`. **Leave public access off**: downloads always go through the API's authorised endpoint.
-2. Create an R2 API token with *Object Read & Write* on that bucket only.
-3. Values: `Storage__S3__ServiceUrl=https://<account-id>.r2.cloudflarestorage.com`, `Storage__S3__Bucket`, `Storage__S3__AccessKeyId`, `Storage__S3__SecretAccessKey`. The region stays `auto`.
+1. In the Supabase project, Storage → **New bucket**, e.g. `phantom-attachments`. Leave **Public bucket off**: downloads always go through the API's authorised endpoint.
+2. Project Settings → Storage → **S3 Connection**: enable it, note the **Endpoint** and **Region**, and create an **S3 access key**. Copy the secret when it is shown.
+3. Values:
+   - `Storage__S3__ServiceUrl=https://<project-ref>.supabase.co/storage/v1/s3`
+   - `Storage__S3__Region=<project region, e.g. us-east-2>`
+   - `Storage__S3__Bucket=phantom-attachments`
+   - `Storage__S3__AccessKeyId` and `Storage__S3__SecretAccessKey` from the key you created.
+
+Any other S3-compatible service works the same way (Cloudflare R2: endpoint `https://<account-id>.r2.cloudflarestorage.com`, region `auto`).
 
 ## 3. API (Render)
 

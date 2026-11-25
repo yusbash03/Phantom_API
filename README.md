@@ -92,7 +92,7 @@ services. Browser end-to-end tests live in Phantom_UI (`npm run test:e2e`).
 
 - [API reference](docs/api.md): endpoints, access rules, errors, real-time events. Interactive: `/swagger` in Development.
 - [Configuration](docs/configuration.md): every setting, its default, and which are secrets.
-- [Deployment](docs/deployment.md): Neon, Cloudflare R2, Render and Vercel, plus the judging deployment.
+- [Deployment](docs/deployment.md): Neon, Supabase Storage, Render and Vercel, plus the judging deployment.
 - [Demo script](docs/demo-script.md): a walkthrough of the demonstration scenario.
 - [Security review](docs/security-review.md): what was checked, fixed and accepted.
 - [Tool usage log](docs/kiro-usage.md): how Kiro and Claude Code were used.
