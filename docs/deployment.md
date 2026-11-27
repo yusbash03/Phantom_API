@@ -5,7 +5,7 @@ The target layout follows design §13:
 | Part | Where | Notes |
 |---|---|---|
 | SPA | Vercel | `Phantom_UI/vercel.json`: `/api/*` rewrite to the API, SPA fallback, CSP and headers |
-| API | Render web service (Docker, Frankfurt) | `Phantom_API/render.yaml` and `Dockerfile` |
+| API | Render web service (Docker, Frankfurt, **free plan**) | `Phantom_API/render.yaml` and `Dockerfile`. Starter plan kept commented out in `render.yaml`. |
 | Database | Neon PostgreSQL (Frankfurt, aws-eu-central-1) | Use the **direct** (non `-pooler`) host. EF migrations take session-level locks. |
 | Files | Supabase Storage (S3 API, eu-west-1 Ireland) | `Storage__Provider=S3`. Render's disk is wiped on every deploy, so Production refuses local storage. |
 | Live updates | Browser → API directly | `VITE_HUB_URL`. Vercel rewrites cannot carry WebSockets. |
@@ -23,7 +23,7 @@ The full Playwright suite was also run against the production SPA build with the
 ## 1. Database (Neon)
 
 1. Create a **separate** project (or at least a separate database) for production. Never reuse the development database, which is full of test data. Choose region **AWS Europe Central 1 (Frankfurt)**, the same city as the API (`render.yaml`: `frankfurt`) and close to Supabase Storage (eu-west-1, Ireland). Database calls happen on almost every request, so the API and the database must share a region. Create database `phantom`.
-2. Apply the migrations once, either from the image (`docker run --rm --entrypoint ./efbundle phantom-api --connection "<owner>"`) or through the first Render deploy's pre-deploy step.
+2. Apply the migrations with the owner connection string (see "Applying migrations" below).
 3. Create the runtime role (security review B-F3):
    `psql "<owner>" -v app_password="'<strong-random>'" -f docs/deployment/db-roles.sql`
 4. The runtime connection string uses `Username=phantom_app`. This is `ConnectionStrings__Phantom`.
@@ -45,13 +45,13 @@ Any other S3-compatible service works the same way (Cloudflare R2: endpoint `htt
 1. New → Blueprint → this repository. `render.yaml` defines the service:
    - a Docker build;
    - health check `/health/ready`;
-   - a pre-deploy step `./efbundle --connection "$MIGRATIONS_CONNECTION_STRING"`, which needs a paid instance type.
+   - the **free** instance type. It sleeps after about 15 minutes without traffic and cannot run a pre-deploy
+     step, so migrations are applied by hand (below). See "Keeping the free instance awake".
 2. Fill in the `sync: false` secrets when prompted:
 
    | Variable | Value |
    |---|---|
    | `ConnectionStrings__Phantom` | runtime role (`phantom_app`) connection string |
-   | `MIGRATIONS_CONNECTION_STRING` | owner connection string (release step only) |
    | `Jwt__SigningKey` | ≥ 32 random bytes, e.g. `openssl rand -base64 48` |
    | `Ai__ApiKey` | Gemini key. Without it, analyses fail honestly and can be retried. |
    | `Mapbox__AccessToken` | server-side geocoding token |
@@ -64,6 +64,43 @@ Any other S3-compatible service works the same way (Cloudflare R2: endpoint `htt
 5. Demo data for judging (task 38, Requirement 20) is off by default. See "Judging deployment" below.
 
 Check: `curl https://<api-host>/health/ready` should return `200`.
+
+### Applying migrations (free plan)
+
+Before deploying a version that adds migrations, apply them from a workstation with the **owner** connection string.
+The app keeps running as `phantom_app`, so the audit-log protection is unaffected. If a migration only adds things, the
+old version keeps working against the new schema until Render switches over.
+
+```bash
+# from the repository root, using the same image Render builds
+docker build -t phantom-api .
+docker run --rm --entrypoint ./efbundle phantom-api --connection "<owner connection string>"
+# or, without Docker (needs `dotnet tool install --global dotnet-ef`):
+dotnet ef database update --project src/PHANTOM.Infrastructure --startup-project src/PHANTOM.API --connection "<owner connection string>"
+```
+
+Don't set `Database__MigrateOnStartup=true` instead: it would need the owner role at run time, which lets the app
+alter the audit log.
+
+### Keeping the free instance awake
+
+A free Render instance sleeps after about 15 minutes without requests; the next request waits roughly a minute, and
+the background workers (AI analysis, geocoding, weather) pause while it sleeps. An external monitor that calls the API
+every 5–10 minutes keeps it awake:
+
+- **[UptimeRobot](https://uptimerobot.com)** (free): New monitor → HTTP(s) → `https://<api-host>/health/live`,
+  interval 5 minutes. It also emails you when the API is down.
+- Alternative: **[cron-job.org](https://cron-job.org)** (free), a GET to the same URL every 10 minutes.
+
+Ping `/health/live`, not `/health/ready`: it doesn't query the database, so Neon's compute can still suspend when
+nobody is using the app. One always-on free service uses about 730 of the 750 free instance hours Render gives a
+workspace each month, so keep only **one** free service awake. The Vercel site is static and never sleeps.
+
+### Switching to the Starter plan later
+
+In `render.yaml`, replace `plan: free` with `plan: starter`, uncomment `preDeployCommand` and the
+`MIGRATIONS_CONNECTION_STRING` variable, then set that variable (owner connection string) in Render. Migrations then
+run automatically before each deploy, the instance never sleeps, and the keep-awake monitor can be removed.
 
 ## 4. SPA (Vercel)
 

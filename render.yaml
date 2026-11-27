@@ -5,18 +5,23 @@ services:
     name: phantom-api
     runtime: docker
     dockerfilePath: ./Dockerfile
-    plan: starter            # pre-deploy (migration) commands need a paid instance type
+    # Free plan for now: it sleeps after ~15 minutes without traffic (see docs/deployment.md, "Keeping the free
+    # instance awake") and cannot run pre-deploy commands, so migrations are applied by hand before each deploy.
+    plan: free
+    # --- Starter plan (paid, ~$7/month): automatic migrations, no sleeping. To switch back, replace `plan: free`
+    # --- above with the line below, uncomment `preDeployCommand` and the MIGRATIONS_CONNECTION_STRING variable.
+    # plan: starter
     region: frankfurt          # same city as the production Neon database (aws-eu-central-1); storage is in eu-west-1
     healthCheckPath: /health/ready
-    # Release step: apply migrations with the database owner role before the new version takes traffic.
-    preDeployCommand: ./efbundle --connection "$MIGRATIONS_CONNECTION_STRING"
+    # Release step (Starter plan only): apply migrations with the database owner role before the new version takes traffic.
+    # preDeployCommand: ./efbundle --connection "$MIGRATIONS_CONNECTION_STRING"
     envVars:
       - key: ASPNETCORE_ENVIRONMENT
         value: Production
       - key: ConnectionStrings__Phantom          # runtime role (no UPDATE/DELETE on audit_logs)
         sync: false
-      - key: MIGRATIONS_CONNECTION_STRING        # owner role, used only by the release step
-        sync: false
+      # - key: MIGRATIONS_CONNECTION_STRING      # Starter plan only: owner role, used only by the release step
+      #   sync: false
       - key: Jwt__SigningKey
         sync: false
       - key: Ai__ApiKey

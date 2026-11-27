@@ -34,7 +34,7 @@ Options are validated at startup: an out-of-range value stops the API with a mes
 | `Cors:AllowedOrigins` | `[]` (`http://localhost:5173` in Development) | Exact origins only; credentials allowed; no wildcard. |
 | `AllowedHosts` | `*` | Set to the API's host name in production. |
 | `ForwardedHeaders:TrustPlatformProxy` | false | true **only** behind a platform proxy that is the sole way in (e.g. Render), so rate limits see real client IPs. |
-| `Database:MigrateOnStartup` | false (true in Development) | Production runs migrations as a release step (`efbundle`). |
+| `Database:MigrateOnStartup` | false (true in Development) | Production applies migrations separately with the owner role (`efbundle`; see deployment.md). |
 | `OpenApi:ExposeUi` | false | Swagger UI and `/openapi/v1.json` outside Development. |
 | `Privacy:IpHashKey` | derived from `Jwt:SigningKey` | Secret. Key for the HMAC of reporter IPs kept for abuse analysis. |
 
