@@ -35,7 +35,7 @@ Options are validated at startup: an out-of-range value stops the API with a mes
 | `AllowedHosts` | `*` | Set to the API's host name in production. |
 | `ForwardedHeaders:TrustPlatformProxy` | false | true **only** behind a platform proxy that is the sole way in (e.g. Render), so rate limits see real client IPs. |
 | `Database:MigrateOnStartup` | false (true in Development) | Production applies migrations separately with the owner role (`efbundle`; see deployment.md). |
-| `OpenApi:ExposeUi` | false | Swagger UI and `/openapi/v1.json` outside Development. |
+| `OpenApi:ExposeUi` | false (true in `render.yaml`) | Serves the API reference (Scalar at `/scalar`, Swagger UI at `/swagger`) and `/openapi/v1.json` outside Development. |
 | `Privacy:IpHashKey` | derived from `Jwt:SigningKey` | Secret. Key for the HMAC of reporter IPs kept for abuse analysis. |
 
 ## File storage

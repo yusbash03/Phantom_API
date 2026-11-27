@@ -18,7 +18,8 @@ Everything below was verified locally with the production image on 2026-11-23:
 - the API's security headers were present.
 
 The full Playwright suite was also run against the production SPA build with the Vercel headers (`vite preview`).
-**Nothing has been deployed yet.** These steps need the owner's accounts.
+**Status (2026-11-27):** the API is deployed at `https://phantom-api-xnkr.onrender.com` (free plan, using the
+development database for now), with its reference at `/scalar`. The SPA is at `https://phantom-ui-two.vercel.app`.
 
 ## 1. Database (Neon)
 
@@ -56,8 +57,8 @@ Any other S3-compatible service works the same way (Cloudflare R2: endpoint `htt
    | `Ai__ApiKey` | Gemini key. Without it, analyses fail honestly and can be retried. |
    | `Mapbox__AccessToken` | server-side geocoding token |
    | `Storage__S3__*` | from step 2 |
-   | `Cors__AllowedOrigins__0` | the Vercel site origin, e.g. `https://phantom.vercel.app` |
-   | `AllowedHosts` | the API host name, e.g. `phantom-api.onrender.com` |
+   | `Cors__AllowedOrigins__0` | the Vercel site origin: `https://phantom-ui-two.vercel.app` (no trailing slash) |
+   | `AllowedHosts` | the API host name: `phantom-api-xnkr.onrender.com` |
 
 3. `ForwardedHeaders__TrustPlatformProxy=true` is preset (security review B-F4). It is safe only because Render serves the service exclusively through its proxy, so rate limits see real client IPs.
 4. Optional: `Privacy__IpHashKey` (a separate key for reporter-IP pseudonyms) and `Auth__*` limits (see `.env.example`).
@@ -105,10 +106,10 @@ run automatically before each deploy, the instance never sleeps, and the keep-aw
 ## 4. SPA (Vercel)
 
 1. Import `Phantom_UI`. The framework is Vite and the output is `dist` (from `vercel.json`).
-2. If the API host is not `phantom-api.onrender.com`, edit `vercel.json` in **both** places: the `/api` rewrite and the CSP `connect-src` (`https://…` and `wss://…`).
+2. `vercel.json` points at `phantom-api-xnkr.onrender.com`. If the API host changes, edit `vercel.json` in **both** places: the `/api` rewrite and the CSP `connect-src` (`https://…` and `wss://…`).
 3. Environment variables:
    - `VITE_MAPBOX_PUBLIC_TOKEN`: a **URL-restricted** public token (restrict it to the Vercel domain in the Mapbox dashboard).
-   - `VITE_HUB_URL=https://<api-host>/hubs/operations`.
+   - `VITE_HUB_URL=https://phantom-api-xnkr.onrender.com/hubs/operations`.
 
 Check: open the site, submit a public report, sign in, and confirm the top bar says "Live".
 

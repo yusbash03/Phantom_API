@@ -15,6 +15,7 @@ using PHANTOM.Infrastructure;
 using PHANTOM.Infrastructure.Identity;
 using PHANTOM.Infrastructure.Persistence;
 using PHANTOM.Infrastructure.Seeding;
+using Scalar.AspNetCore;
 using Serilog;
 using Serilog.Formatting.Compact;
 
@@ -220,6 +221,18 @@ app.MapHub<OperationsHub>(OperationsHub.Path, o => o.CloseOnAuthenticationExpira
 if (exposeApiDocs)
 {
     app.MapOpenApi("/openapi/{documentName}.json").AllowAnonymous();
+    // Scalar API reference at /scalar (alongside Swagger UI at /swagger). It reads the same document; requests sent
+    // from it go to this API and are still authenticated and authorised as usual.
+    app.MapScalarApiReference("/scalar", options => options
+        .WithTitle("PHANTOM API")
+        .WithOpenApiRoutePattern("/openapi/{documentName}.json")
+        .AddPreferredSecuritySchemes("Bearer")
+        // No third-party AI assistant, MCP link, telemetry or vendor toolbar on the documentation page.
+        .DisableAgent()
+        .DisableMcp()
+        .DisableTelemetry()
+        .HideDeveloperTools())
+        .AllowAnonymous();
 }
 
 app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false }).AllowAnonymous();

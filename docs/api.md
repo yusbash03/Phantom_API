@@ -1,8 +1,9 @@
 # PHANTOM API reference
 
 Base path `/api/v1`. JSON throughout, with enums as strings. The machine-readable contract is
-[`contracts/openapi.json`](../contracts/openapi.json), generated at build time. Swagger UI is at `/swagger` in Development
-(or when `OpenApi:ExposeUi=true`).
+[`contracts/openapi.json`](../contracts/openapi.json), generated at build time. The interactive reference is Scalar at `/scalar` (Swagger UI at `/swagger`), in
+Development or when `OpenApi:ExposeUi=true`. The deployed API serves it at
+<https://phantom-api-xnkr.onrender.com/scalar>.
 
 ## Authentication
 

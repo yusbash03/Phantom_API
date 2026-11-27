@@ -6,6 +6,8 @@ prioritise, link duplicates, assign responders and resolve. Every significant ac
 
 This repository is the .NET backend. The web app is in the companion repository **Phantom_UI**.
 
+Live: web app <https://phantom-ui-two.vercel.app> · API reference <https://phantom-api-xnkr.onrender.com/scalar>.
+
 > PHANTOM is a decision-support tool. It does not dispatch services, diagnose anyone, or decide anything on its own.
 > It is not certified, compliant or approved for production emergency use.
 
@@ -73,7 +75,7 @@ dotnet run --project src/PHANTOM.API --launch-profile http   # http://localhost:
 In Development the API:
 - applies migrations on startup;
 - seeds the labelled demo accounts (`admin@`, `coordinator@` and `responder@phantom.demo`, using your demo password), demo responders and demo incidents;
-- serves Swagger UI at `/swagger`.
+- serves the API reference: Scalar at `/scalar` and Swagger UI at `/swagger`.
 
 Without a Gemini key, Development uses a clearly labelled **simulated** AI.
 
@@ -90,7 +92,7 @@ services. Browser end-to-end tests live in Phantom_UI (`npm run test:e2e`).
 
 ## Documentation
 
-- [API reference](docs/api.md): endpoints, access rules, errors, real-time events. Interactive: `/swagger` in Development.
+- [API reference](docs/api.md): endpoints, access rules, errors, real-time events. Interactive: [Scalar on the live API](https://phantom-api-xnkr.onrender.com/scalar), or `/scalar` locally.
 - [Configuration](docs/configuration.md): every setting, its default, and which are secrets.
 - [Deployment](docs/deployment.md): Neon, Supabase Storage, Render and Vercel, plus the judging deployment.
 - [Demo script](docs/demo-script.md): a walkthrough of the demonstration scenario.

@@ -40,9 +40,9 @@ services:
         sync: false
       - key: Storage__S3__SecretAccessKey
         sync: false
-      - key: Cors__AllowedOrigins__0             # the Vercel site, e.g. https://phantom.vercel.app
+      - key: Cors__AllowedOrigins__0             # the Vercel site: https://phantom-ui-two.vercel.app
         sync: false
-      - key: AllowedHosts                        # e.g. phantom-api.onrender.com
+      - key: AllowedHosts                        # phantom-api-xnkr.onrender.com
         sync: false
       - key: ForwardedHeaders__TrustPlatformProxy
         value: "true"
@@ -50,3 +50,5 @@ services:
         value: "false"
       - key: Seed__Enabled
         value: "false"
+      - key: OpenApi__ExposeUi                   # public API reference at /scalar (and /swagger); set "false" to hide
+        value: "true"
